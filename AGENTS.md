@@ -206,3 +206,25 @@ After adjusting the source string, you need to call the respective translation l
 - CORS settings in backend must allow frontend domain
 - API tokens have different scopes - check permissions carefully
 
+---
+
+## Local Investigation Notes
+
+### Active Issues
+
+- [#1989](https://github.com/go-vikunja/vikunja/issues/1989) - Saved filters render twice in sidebar on initial load
+
+### Self-hosted Instance
+
+- URL: https://tasks.rodda.xyz
+- Version: v1.0.0-rc3
+- API Token: Stored in Infisical (`VIKUNJA_API_TOKEN`)
+
+### Sidebar Bug (#1989) Findings
+
+- Saved filters appear twice on initial load, disappear when clicked
+- Cannot reproduce on demo site (possibly data-volume triggered)
+- API data is correct: negative IDs, `parent_project_id: 0`
+- Console shows `currentProject = undefined` on initial load
+- Hypothesis: Vue reactivity race condition in Navigation.vue
+- Key files: `frontend/src/components/home/Navigation.vue`, `frontend/src/stores/projects.ts`
