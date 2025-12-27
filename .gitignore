@@ -48,3 +48,6 @@ devenv.local.nix
 PLAN.md
 /.crush/
 
+
+# Claude Code project docs (local only)
+.claude/
