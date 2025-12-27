@@ -1,0 +1,159 @@
+# Blueprint: Add Months/Years to Repeat Options GUI
+# Type: feature
+# Created: 2025-12-28
+# Tracking: document-based (.claude/PROGRESS.md, .claude/ISSUES.md)
+
+metadata:
+  name: repeat-months-years
+  type: feature
+  created: 2025-12-28
+  tracking_method: document
+  upstream_issue: https://github.com/go-vikunja/vikunja/issues/1369
+  upstream_pr: https://kolaente.dev/vikunja/vikunja/pulls/2642
+
+summary: |
+  Add months and years options to the repeat interval dropdown in the task UI.
+  Backend already supports any duration (stored as seconds). Frontend types already
+  define months/years. Only the GUI dropdown is missing these options.
+
+scope:
+  in_scope:
+    - Add months/years to RepeatAfter.vue dropdown
+    - Add i18n translations for new options
+    - Add quick buttons for monthly/yearly presets
+    - Test round-trip (create, save, reload)
+  out_of_scope:
+    - Backend changes (already supports)
+    - CalDAV recurrence rule overhaul (separate issue)
+    - Todoist migration data cleanup (separate issue bug_001)
+
+# Depth: 2 (feature → tasks)
+features:
+  feature_1:
+    name: Add months/years dropdown options
+    description: Extend the repeat type select to include months and years
+    complexity:
+      scope: 1
+      technical: 1
+      uncertainty: 1
+      dependencies: 1
+      risk: 1
+      composite: 1.0
+    acceptance_criteria:
+      - Dropdown shows: hours, days, weeks, months, years
+      - Selecting months/years correctly calculates seconds for backend
+      - Existing hours/days/weeks functionality unchanged
+    tasks:
+      task_1_1:
+        name: Add options to RepeatAfter.vue select
+        file: frontend/src/components/tasks/partials/RepeatAfter.vue
+        changes:
+          - Add <option value="months"> after weeks option
+          - Add <option value="years"> after months option
+        complexity: 1.0
+      task_1_2:
+        name: Verify conversion logic handles months/years
+        file: frontend/src/components/tasks/partials/RepeatAfter.vue
+        notes: |
+          Check if updateData() correctly converts months/years to seconds.
+          May need to add conversion constants if not already present.
+        complexity: 1.5
+
+  feature_2:
+    name: Add i18n translations
+    description: Add translation keys for months and years labels
+    complexity:
+      scope: 1
+      technical: 1
+      uncertainty: 1
+      dependencies: 1
+      risk: 1
+      composite: 1.0
+    acceptance_criteria:
+      - task.repeat.months key exists in en.json
+      - task.repeat.years key exists in en.json
+      - Labels display correctly in UI
+    tasks:
+      task_2_1:
+        name: Add translation keys to en.json
+        file: frontend/src/i18n/lang/en.json
+        changes:
+          - Add "months" key under task.repeat
+          - Add "years" key under task.repeat
+        complexity: 1.0
+
+  feature_3:
+    name: Add quick preset buttons
+    description: Add monthly and yearly quick buttons alongside existing presets
+    complexity:
+      scope: 1
+      technical: 1
+      uncertainty: 2
+      dependencies: 1
+      risk: 1
+      composite: 1.2
+    acceptance_criteria:
+      - Monthly button sets 1 month repeat
+      - Yearly button sets 1 year repeat
+      - Buttons styled consistently with existing presets
+    tasks:
+      task_3_1:
+        name: Add monthly quick button
+        file: frontend/src/components/tasks/partials/RepeatAfter.vue
+        changes:
+          - Add XButton for monthly (1, 'months')
+          - Add i18n key task.repeat.everyMonth
+        complexity: 1.0
+      task_3_2:
+        name: Add yearly quick button
+        file: frontend/src/components/tasks/partials/RepeatAfter.vue
+        changes:
+          - Add XButton for yearly (1, 'years')
+          - Add i18n key task.repeat.everyYear
+        complexity: 1.0
+
+  feature_4:
+    name: Test and verify
+    description: Verify the fix works end-to-end
+    complexity:
+      scope: 1
+      technical: 1
+      uncertainty: 2
+      dependencies: 2
+      risk: 1
+      composite: 1.4
+    acceptance_criteria:
+      - Create task with yearly repeat via GUI
+      - Save task, reload page
+      - Verify yearly repeat persists correctly
+      - Verify tooltip/display shows correct interval
+    tasks:
+      task_4_1:
+        name: Manual testing
+        notes: |
+          1. Run frontend dev server
+          2. Create task with yearly repeat
+          3. Save and reload
+          4. Verify persistence
+        complexity: 1.5
+      task_4_2:
+        name: Run existing unit tests
+        command: cd frontend && pnpm test:unit
+        complexity: 1.0
+
+risks:
+  - id: risk_1
+    description: Months/years to seconds conversion may not exist
+    mitigation: Check conversion logic, add if needed (30 days = month, 365 days = year)
+    likelihood: low
+    impact: low
+
+dependencies:
+  external:
+    - Upstream issue #1369 may be resolved before we contribute
+  internal: []
+
+notes: |
+  This is a minimal fix to unblock annual repeat configuration.
+  Full CalDAV recurrence rule support is out of scope (upstream considering as breaking change).
+  Consider contributing this fix upstream after testing locally.

@@ -47,6 +47,7 @@ const (
 	TaskRepeatModeDefault TaskRepeatMode = iota
 	TaskRepeatModeMonth
 	TaskRepeatModeFromCurrentDate
+	TaskRepeatModeYear
 )
 
 // Task represents a task in a project
@@ -1456,6 +1457,10 @@ func addOneMonthToDate(d time.Time) time.Time {
 	return time.Date(d.Year(), d.Month()+1, d.Day(), d.Hour(), d.Minute(), d.Second(), d.Nanosecond(), config.GetTimeZone())
 }
 
+func addOneYearToDate(d time.Time) time.Time {
+	return time.Date(d.Year()+1, d.Month(), d.Day(), d.Hour(), d.Minute(), d.Second(), d.Nanosecond(), config.GetTimeZone())
+}
+
 func addRepeatIntervalToTime(now, t time.Time, duration time.Duration) time.Time {
 	for {
 		t = t.Add(duration)
@@ -1526,6 +1531,35 @@ func setTaskDatesMonthRepeat(oldTask, newTask *Task) {
 
 		if !oldTask.EndDate.IsZero() {
 			newTask.EndDate = addOneMonthToDate(oldTask.EndDate)
+		}
+	}
+
+	newTask.Done = false
+}
+
+func setTaskDatesYearRepeat(oldTask, newTask *Task) {
+	if !oldTask.DueDate.IsZero() {
+		newTask.DueDate = addOneYearToDate(oldTask.DueDate)
+	}
+
+	newTask.Reminders = oldTask.Reminders
+	if len(oldTask.Reminders) > 0 {
+		for in, r := range oldTask.Reminders {
+			newTask.Reminders[in].Reminder = addOneYearToDate(r.Reminder)
+		}
+	}
+
+	if !oldTask.StartDate.IsZero() && !oldTask.EndDate.IsZero() {
+		diff := oldTask.EndDate.Sub(oldTask.StartDate)
+		newTask.StartDate = addOneYearToDate(oldTask.StartDate)
+		newTask.EndDate = newTask.StartDate.Add(diff)
+	} else {
+		if !oldTask.StartDate.IsZero() {
+			newTask.StartDate = addOneYearToDate(oldTask.StartDate)
+		}
+
+		if !oldTask.EndDate.IsZero() {
+			newTask.EndDate = addOneYearToDate(oldTask.EndDate)
 		}
 	}
 
@@ -1613,6 +1647,8 @@ func updateDone(oldTask *Task, newTask *Task) (updateDoneAt bool) {
 		switch oldTask.RepeatMode {
 		case TaskRepeatModeMonth:
 			setTaskDatesMonthRepeat(oldTask, newTask)
+		case TaskRepeatModeYear:
+			setTaskDatesYearRepeat(oldTask, newTask)
 		case TaskRepeatModeFromCurrentDate:
 			setTaskDatesFromCurrentDateRepeat(oldTask, newTask)
 		case TaskRepeatModeDefault:

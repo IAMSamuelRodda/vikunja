@@ -22,6 +22,20 @@
 			>
 				{{ $t('task.repeat.every30d') }}
 			</XButton>
+			<XButton
+				variant="secondary"
+				class="is-small"
+				@click="() => setRepeatAfter(1, 'months')"
+			>
+				{{ $t('task.repeat.everyMonth') }}
+			</XButton>
+			<XButton
+				variant="secondary"
+				class="is-small"
+				@click="() => setRepeatAfter(1, 'years')"
+			>
+				{{ $t('task.repeat.everyYear') }}
+			</XButton>
 		</div>
 		<div class="is-flex is-align-items-center mbe-2">
 			<label
@@ -42,6 +56,9 @@
 						</option>
 						<option :value="TASK_REPEAT_MODES.REPEAT_MODE_MONTH">
 							{{ $t('task.repeat.monthly') }}
+						</option>
+						<option :value="TASK_REPEAT_MODES.REPEAT_MODE_YEAR">
+							{{ $t('task.repeat.yearly') }}
 						</option>
 						<option :value="TASK_REPEAT_MODES.REPEAT_MODE_FROM_CURRENT_DATE">
 							{{ $t('task.repeat.fromCurrentDate') }}
@@ -84,6 +101,12 @@
 							</option>
 							<option value="weeks">
 								{{ $t('task.repeat.weeks') }}
+							</option>
+							<option value="months">
+								{{ $t('task.repeat.months') }}
+							</option>
+							<option value="years">
+								{{ $t('task.repeat.years') }}
 							</option>
 						</select>
 					</div>
