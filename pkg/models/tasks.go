@@ -1563,6 +1563,7 @@ func setTaskDatesYearRepeat(oldTask, newTask *Task) {
 		}
 	}
 
+	newTask.RepeatMode = TaskRepeatModeYear
 	newTask.Done = false
 }
 
