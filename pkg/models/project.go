@@ -335,8 +335,8 @@ func (p *Project) ReadOne(s *xorm.Session, a web.Auth) (err error) {
 		}
 	}
 
-	// For saved filters, IsFavorite was already set from the SavedFilter struct
-	// Don't overwrite it with the project favorites lookup
+	// For saved filters, IsFavorite was already set from the SavedFilter struct.
+	// Don't overwrite it with the project favorites lookup.
 	if !isFilter {
 		p.IsFavorite, err = isFavorite(s, p.ID, a, FavoriteKindProject)
 		if err != nil {
