@@ -48,3 +48,7 @@ PLAN.md
 /.crush/
 /.playwright-mcp
 .claude/
+
+# Local development/test files
+tests/
+frontend/src/modelSchema/
