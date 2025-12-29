@@ -1545,6 +1545,7 @@ func setTaskDatesRRule(oldTask, newTask *Task) {
 	if !oldTask.DueDate.IsZero() {
 		timeDiff = nextOccurrence.Sub(oldTask.DueDate)
 	} else {
+		// No due date, calculate diff from the base date used for rule generation
 		timeDiff = nextOccurrence.Sub(baseDate)
 	}
 	// Always set the due date for repeating tasks - if there was no due date,
