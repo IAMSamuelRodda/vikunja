@@ -262,7 +262,6 @@ func CanDoAPIRoute(c echo.Context, token *APIToken) (can bool) {
 		route = strings.Join(routeParts[1:], "_")
 	}
 
-	// The tasks read_all route is available as /:project/tasks and /tasks/all - therefore we need this workaround here.
 	if routeGroupName == "tasks" && path == "/api/v1/projects/:project/tasks" && c.Request().Method == http.MethodGet {
 		route = "read_all"
 	}
