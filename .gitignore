@@ -47,4 +47,9 @@ devenv.local.nix
 /.claude/CLAUDE.md
 PLAN.md
 /.crush/
+/.playwright-mcp
+.claude/
 
+# Local development/test files
+tests/
+frontend/src/modelSchema/

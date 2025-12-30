@@ -83,10 +83,6 @@
 				>
 					<Icon icon="paperclip" />
 				</span>
-				<CommentCount
-					:task="task"
-					class="project-task-icon"
-				/>
 				<span
 					v-if="!isEditorContentEmpty(task.description)"
 					class="icon"
@@ -94,11 +90,15 @@
 					<Icon icon="align-left" />
 				</span>
 				<span
-					v-if="task.repeatAfter.amount > 0"
+					v-if="isRepeating(task.repeats)"
 					class="icon"
 				>
 					<Icon icon="history" />
 				</span>
+				<CommentCount
+					:task="task"
+					class="project-task-icon"
+				/>
 				<AssigneeList
 					v-if="task.assignees.length > 0"
 					:assignees="task.assignees"
@@ -139,7 +139,7 @@ import AssigneeList from '@/components/tasks/partials/AssigneeList.vue'
 import {playPopSound} from '@/helpers/playPop'
 import {isEditorContentEmpty} from '@/helpers/editorContentEmpty'
 import {useProjectStore} from '@/stores/projects'
-import {TASK_REPEAT_MODES} from '@/types/IRepeatMode'
+import {isRepeating} from '@/helpers/rrule'
 
 const props = withDefaults(defineProps<{
 	task: ITask,
@@ -181,7 +181,7 @@ const isOverdue = computed(() => (
 ))
 
 async function toggleTaskDone(task: ITask) {
-	const isRecurringTask = task.repeatAfter.amount > 0 || task.repeatMode === TASK_REPEAT_MODES.REPEAT_MODE_MONTH
+	const isRecurringTask = isRepeating(task.repeats)
 	const wasBeingMarkedDone = !task.done
 	
 	loadingInternal.value = true

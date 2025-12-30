@@ -1,5 +1,6 @@
 <template>
 	<div
+		ref="taskViewContainer"
 		class="loader-container task-view-container"
 		:class="{
 			'is-loading': taskService.loading || !visible,
@@ -407,6 +408,12 @@
 						:project-id="task.projectId"
 						:initial-comments="task.comments"
 					/>
+
+					<!-- Marker element for scroll-to-bottom button visibility -->
+					<div
+						ref="contentBottomMarker"
+						class="content-bottom-marker"
+					/>
 				</div>
 				
 				<!-- Task Actions -->
@@ -575,6 +582,16 @@
 			/>
 		</div>
 
+		<BaseButton
+			v-if="showScrollToCommentsButton"
+			v-tooltip="$t('task.detail.scrollToBottom')"
+			class="scroll-to-comments-button d-print-none"
+			:aria-label="$t('task.detail.scrollToBottom')"
+			@click="scrollToBottom"
+		>
+			<Icon icon="chevron-down" />
+		</BaseButton>
+
 		<Modal
 			:enabled="showDeleteModal"
 			@close="showDeleteModal = false"
@@ -601,7 +618,7 @@ import {ref, reactive, shallowReactive, computed, watch, nextTick, onMounted, on
 import {useRouter, useRoute, type RouteLocation, onBeforeRouteLeave} from 'vue-router'
 import {storeToRefs} from 'pinia'
 import {useI18n} from 'vue-i18n'
-import {unrefElement, useMediaQuery} from '@vueuse/core'
+import {unrefElement, useDebounceFn, useElementSize, useIntersectionObserver, useMediaQuery, useMutationObserver} from '@vueuse/core'
 import {klona} from 'klona/lite'
 import {eventToHotkeyString} from '@github/hotkey'
 
@@ -642,7 +659,7 @@ import {uploadFile} from '@/helpers/attachments'
 import {getProjectTitle} from '@/helpers/getProjectTitle'
 import {isAppleDevice} from '@/helpers/isAppleDevice'
 import {scrollIntoView} from '@/helpers/scrollIntoView'
-import {TASK_REPEAT_MODES} from '@/types/IRepeatMode'
+import {isRepeating} from '@/helpers/rrule'
 import {playPopSound} from '@/helpers/playPop'
 
 import {useAttachmentStore} from '@/stores/attachments'
@@ -653,6 +670,7 @@ import {useAuthStore} from '@/stores/auth'
 import {useBaseStore} from '@/stores/base'
 
 import {useTitle} from '@/composables/useTitle'
+import {useTaskDetailShortcuts} from '@/composables/useTaskDetailShortcuts'
 
 import {success} from '@/message'
 import type {Action as MessageAction} from '@/message'
@@ -795,6 +813,82 @@ async function scrollToHeading() {
 	scrollIntoView(unrefElement(heading))
 }
 
+const taskViewContainer = ref<HTMLElement | null>(null)
+const scrollContainer = ref<HTMLElement | null>(null)
+const contentBottomMarker = ref<HTMLElement | null>(null)
+const bottomMarkerVisible = ref(true)
+const isScrollable = ref(false)
+
+function resolveScrollContainer() {
+	let el = taskViewContainer.value
+
+	while (el) {
+		const overflowY = getComputedStyle(el).overflowY
+		if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
+			scrollContainer.value = el
+			return
+		}
+		el = el.parentElement
+	}
+
+	scrollContainer.value = (document.scrollingElement as HTMLElement | null) ?? document.documentElement
+}
+
+function updateScrollable() {
+	const scroller = scrollContainer.value
+	if (!scroller) {
+		isScrollable.value = false
+		return
+	}
+
+	isScrollable.value = scroller.scrollHeight > scroller.clientHeight + 1
+}
+
+const showScrollToCommentsButton = computed(() => {
+	return isScrollable.value && !bottomMarkerVisible.value
+})
+
+function scrollToBottom() {
+	if (!contentBottomMarker.value) {
+		return
+	}
+
+	contentBottomMarker.value.scrollIntoView({
+		behavior: 'smooth',
+		block: 'end',
+		inline: 'nearest',
+	})
+}
+
+useIntersectionObserver(
+	contentBottomMarker,
+	([entry]) => {
+		bottomMarkerVisible.value = entry?.isIntersecting ?? true
+	},
+	{threshold: 0.1},
+)
+
+const debouncedMutationHandler = useDebounceFn(async () => {
+	await nextTick()
+	resolveScrollContainer()
+	updateScrollable()
+}, 100)
+
+useMutationObserver(
+	taskViewContainer,
+	debouncedMutationHandler,
+	{subtree: true, childList: true},
+)
+
+const {height: scrollContainerHeight} = useElementSize(scrollContainer)
+watch(scrollContainerHeight, () => updateScrollable())
+
+onMounted(async () => {
+	await nextTick()
+	resolveScrollContainer()
+	updateScrollable()
+})
+
 const taskService = shallowReactive(new TaskService())
 
 // load task
@@ -831,6 +925,8 @@ watch(
 		} finally {
 			await nextTick()
 			scrollToHeading()
+			resolveScrollContainer()
+			updateScrollable()
 			visible.value = true
 		}
 	}, {immediate: true})
@@ -881,7 +977,7 @@ function setActiveFields() {
 	activeFields.priority = task.value.priority !== PRIORITIES.UNSET
 	activeFields.relatedTasks = Object.keys(task.value.relatedTasks).length > 0
 	activeFields.reminders = task.value.reminders.length > 0
-	activeFields.repeatAfter = task.value.repeatAfter?.amount > 0 || task.value.repeatMode !== TASK_REPEAT_MODES.REPEAT_MODE_DEFAULT
+	activeFields.repeatAfter = isRepeating(task.value.repeats)
 	activeFields.startDate = task.value.startDate !== null
 }
 
@@ -933,6 +1029,9 @@ async function saveTask(
 		return
 	}
 
+	// Remember which fields were open before saving (to preserve edit state)
+	const repeatWasOpen = activeFields.repeatAfter
+
 	currentTask.hexColor = taskColor.value
 
 	// If no end date is being set, but a start date and due date,
@@ -946,8 +1045,18 @@ async function saveTask(
 	}
 
 	const updatedTask = await taskStore.update(currentTask) // TODO: markraw ?
+
 	Object.assign(task.value, updatedTask)
+
+	// Wait for Vue reactivity to settle before re-evaluating active fields
+	await nextTick()
+
 	setActiveFields()
+
+	// Preserve repeat field if it was open and still has valid repeat config
+	if (repeatWasOpen && isRepeating(task.value.repeats)) {
+		activeFields.repeatAfter = true
+	}
 
 	let actions: MessageAction[] = []
 	if (undoCallback) {
@@ -958,6 +1067,12 @@ async function saveTask(
 	}
 	success({message: t('task.detail.updateSuccess')}, actions)
 }
+
+useTaskDetailShortcuts({
+	task: () => task.value,
+	taskTitle: () => taskTitle.value,
+	onSave: saveTask,
+})
 
 const showDeleteModal = ref(false)
 
@@ -1016,8 +1131,8 @@ async function setPercentDone(percentDone: number) {
 }
 
 async function removeRepeatAfter() {
-	task.value.repeatAfter.amount = 0
-	task.value.repeatMode = TASK_REPEAT_MODES.REPEAT_MODE_DEFAULT
+	task.value.repeats = ''
+	task.value.repeatsFromCurrentDate = false
 	await saveTask()
 }
 
@@ -1257,5 +1372,43 @@ h3 .button {
 	font-weight: 700;
 	margin: .5rem 0;
 	display: inline-block;
+}
+
+.scroll-to-comments-button {
+	position: fixed;
+	// Position above the keyboard shortcuts button (which is at bottom: calc(1rem - 4px))
+	inset-block-end: 2.5rem;
+	inset-inline-end: .75rem;
+	z-index: 10;
+	inline-size: 2rem;
+	block-size: 2rem;
+	border-radius: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	background-color: var(--site-background);
+	border: 1px solid var(--grey-300);
+	color: var(--grey-500);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	transition: all $transition;
+
+	&:hover {
+		background-color: var(--grey-100);
+		color: var(--grey-700);
+	}
+
+	@media screen and (max-width: $tablet) {
+		// Hide on mobile since keyboard shortcuts button is also hidden
+		display: none;
+	}
+}
+</style>
+
+<style lang="scss">
+// global style to override position when the modal task detail is active
+.modal-content .scroll-to-comments-button {
+	inset-block-end: .75rem;
+	inset-inline-end: 1rem;
 }
 </style>
