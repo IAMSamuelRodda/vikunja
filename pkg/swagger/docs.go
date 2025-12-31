@@ -2476,7 +2476,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "The sorting parameter. You can pass this multiple times to get the tasks ordered by multiple different parametes, along with ` + "`" + `order_by` + "`" + `. Possible values to sort by are ` + "`" + `id` + "`" + `, ` + "`" + `title` + "`" + `, ` + "`" + `description` + "`" + `, ` + "`" + `done` + "`" + `, ` + "`" + `done_at` + "`" + `, ` + "`" + `due_date` + "`" + `, ` + "`" + `created_by_id` + "`" + `, ` + "`" + `project_id` + "`" + `, ` + "`" + `repeat_after` + "`" + `, ` + "`" + `priority` + "`" + `, ` + "`" + `start_date` + "`" + `, ` + "`" + `end_date` + "`" + `, ` + "`" + `hex_color` + "`" + `, ` + "`" + `percent_done` + "`" + `, ` + "`" + `uid` + "`" + `, ` + "`" + `created` + "`" + `, ` + "`" + `updated` + "`" + `. Default is ` + "`" + `id` + "`" + `.",
+                        "description": "The sorting parameter. You can pass this multiple times to get the tasks ordered by multiple different parametes, along with ` + "`" + `order_by` + "`" + `. Possible values to sort by are ` + "`" + `id` + "`" + `, ` + "`" + `title` + "`" + `, ` + "`" + `description` + "`" + `, ` + "`" + `done` + "`" + `, ` + "`" + `done_at` + "`" + `, ` + "`" + `due_date` + "`" + `, ` + "`" + `created_by_id` + "`" + `, ` + "`" + `project_id` + "`" + `, ` + "`" + `priority` + "`" + `, ` + "`" + `start_date` + "`" + `, ` + "`" + `end_date` + "`" + `, ` + "`" + `hex_color` + "`" + `, ` + "`" + `percent_done` + "`" + `, ` + "`" + `uid` + "`" + `, ` + "`" + `created` + "`" + `, ` + "`" + `updated` + "`" + `. Default is ` + "`" + `id` + "`" + `.",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -4102,7 +4102,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "The sorting parameter. You can pass this multiple times to get the tasks ordered by multiple different parametes, along with ` + "`" + `order_by` + "`" + `. Possible values to sort by are ` + "`" + `id` + "`" + `, ` + "`" + `title` + "`" + `, ` + "`" + `description` + "`" + `, ` + "`" + `done` + "`" + `, ` + "`" + `done_at` + "`" + `, ` + "`" + `due_date` + "`" + `, ` + "`" + `created_by_id` + "`" + `, ` + "`" + `project_id` + "`" + `, ` + "`" + `repeat_after` + "`" + `, ` + "`" + `priority` + "`" + `, ` + "`" + `start_date` + "`" + `, ` + "`" + `end_date` + "`" + `, ` + "`" + `hex_color` + "`" + `, ` + "`" + `percent_done` + "`" + `, ` + "`" + `uid` + "`" + `, ` + "`" + `created` + "`" + `, ` + "`" + `updated` + "`" + `. Default is ` + "`" + `id` + "`" + `.",
+                        "description": "The sorting parameter. You can pass this multiple times to get the tasks ordered by multiple different parametes, along with ` + "`" + `order_by` + "`" + `. Possible values to sort by are ` + "`" + `id` + "`" + `, ` + "`" + `title` + "`" + `, ` + "`" + `description` + "`" + `, ` + "`" + `done` + "`" + `, ` + "`" + `done_at` + "`" + `, ` + "`" + `due_date` + "`" + `, ` + "`" + `created_by_id` + "`" + `, ` + "`" + `project_id` + "`" + `, ` + "`" + `priority` + "`" + `, ` + "`" + `start_date` + "`" + `, ` + "`" + `end_date` + "`" + `, ` + "`" + `hex_color` + "`" + `, ` + "`" + `percent_done` + "`" + `, ` + "`" + `uid` + "`" + `, ` + "`" + `created` + "`" + `, ` + "`" + `updated` + "`" + `. Default is ` + "`" + `id` + "`" + `.",
                         "name": "sort_by",
                         "in": "query"
                     },
@@ -8753,17 +8753,13 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.TaskReminder"
                     }
                 },
-                "repeat_after": {
-                    "description": "An amount in seconds this task repeats itself. If this is set, when marking the task as done, it will mark itself as \"undone\" and then increase all remindes and the due date by its amount.",
-                    "type": "integer"
+                "repeats": {
+                    "description": "An RFC 5545 RRULE string defining the recurrence pattern. Examples: \"FREQ=DAILY;INTERVAL=1\", \"FREQ=WEEKLY;BYDAY=MO,WE,FR\", \"FREQ=MONTHLY;BYMONTHDAY=15\"",
+                    "type": "string"
                 },
-                "repeat_mode": {
-                    "description": "Can have three possible values which will trigger when the task is marked as done: 0 = repeats after the amount specified in repeat_after, 1 = repeats all dates each months (ignoring repeat_after), 3 = repeats from the current date rather than the last set date.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.TaskRepeatMode"
-                        }
-                    ]
+                "repeats_from_current_date": {
+                    "description": "If true, the next occurrence is calculated from the completion date rather than the original due date.",
+                    "type": "boolean"
                 },
                 "start_date": {
                     "description": "When this task starts.",
@@ -8964,19 +8960,6 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "models.TaskRepeatMode": {
-            "type": "integer",
-            "enum": [
-                0,
-                1,
-                2
-            ],
-            "x-enum-varnames": [
-                "TaskRepeatModeDefault",
-                "TaskRepeatModeMonth",
-                "TaskRepeatModeFromCurrentDate"
-            ]
         },
         "models.TaskUnreadStatus": {
             "type": "object",
