@@ -1,9 +1,9 @@
 name: Build
 
+# Quick Docker build (no tests) - manual trigger only
+# For full builds with tests, use the CI workflow or create a PR
+
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 env:
