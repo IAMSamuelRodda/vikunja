@@ -4,6 +4,11 @@
 
 Vikunja is a comprehensive todo and task management application with a Vue.js frontend and Go backend. It supports multiple project views (List, Kanban, Gantt, Table), team collaboration, file attachments, and extensive integrations.
 
+**This is a personal fork** of [go-vikunja/vikunja](https://github.com/go-vikunja/vikunja). The fork maintains:
+- Custom CI workflow (`release-fork.yml`) that builds without upstream secrets
+- Docker images at `ghcr.io/iamsamuelrodda/vikunja:unstable-fork`
+- All artifacts tagged with `-fork` suffix to distinguish from upstream
+
 The project consists of:
 - `pkg/` – Go code for the API service
 - `frontend/` – Vue.js based web client
@@ -18,6 +23,55 @@ When the user asks you to create a plan to fix or implement something:
 - ALWAYS write that plan to the plans/ directory on the root of the repo.
 - NEVER commit plans to git
 - Give the plan a descriptive name
+
+## Fork Workflow & Worktree Rules
+
+**CRITICAL: All development branches must be created from `upstream/main`, NOT from `origin/main` (fork's main).**
+
+This ensures:
+1. Clean PRs to upstream (no fork-specific commits polluting the diff)
+2. Branches can still be merged into fork's main after upstream accepts them
+3. Fork-specific changes stay isolated on `origin/main`
+
+### Git Remote Setup
+
+```bash
+# Verify remotes are configured correctly
+git remote -v
+# origin    https://github.com/IAMSamuelRodda/vikunja.git (fetch/push)  <- Your fork
+# upstream  https://github.com/go-vikunja/vikunja.git (fetch/push)      <- Original repo
+```
+
+### Creating Worktree Branches (for upstream contributions)
+
+```bash
+# ALWAYS fetch upstream first
+git fetch upstream
+
+# Create worktree from upstream/main (NOT origin/main)
+git worktree add ../fix-<description> -b fix/<description> upstream/main
+git worktree add ../feat-<description> -b feat/<description> upstream/main
+
+# Example:
+git worktree add ../fix-rrule-calculation -b fix/rrule-calculation upstream/main
+```
+
+### Workflow Summary
+
+| Branch Type | Base From | Push To | PR Target |
+|-------------|-----------|---------|-----------|
+| Upstream contribution | `upstream/main` | `origin` | `upstream/main` |
+| Fork-only feature | `origin/main` | `origin` | `origin/main` |
+
+### After Upstream Accepts PR
+
+```bash
+# Merge the accepted changes into fork's main
+git checkout main
+git fetch upstream
+git merge upstream/main
+git push origin main
+```
 
 ## Development Commands
 
