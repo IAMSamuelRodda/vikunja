@@ -12,6 +12,21 @@ const authStore = useAuthStore()
 const status = ref('Creating demo account...')
 const error = ref('')
 
+// Rate limiting: 1 demo account per 5 minutes per browser
+const COOLDOWN_KEY = 'demo_account_cooldown'
+const COOLDOWN_MS = 5 * 60 * 1000 // 5 minutes
+
+function checkCooldown(): boolean {
+	const lastCreated = localStorage.getItem(COOLDOWN_KEY)
+	if (!lastCreated) return true
+	const elapsed = Date.now() - parseInt(lastCreated, 10)
+	return elapsed > COOLDOWN_MS
+}
+
+function setCooldown(): void {
+	localStorage.setItem(COOLDOWN_KEY, Date.now().toString())
+}
+
 // Demo data
 const DEMO_LABELS = [
 	{title: 'Personal', hex_color: '3b82f6'},
@@ -20,22 +35,22 @@ const DEMO_LABELS = [
 ]
 
 const DEMO_PROJECTS = [
-	{title: 'Inbox', description: 'Default inbox for quick captures'},
+	// Note: "Inbox" is auto-created by Vikunja on registration, so we only add extra projects
 	{title: 'Trip to Mars', description: 'Planning the ultimate vacation'},
 ]
 
 const DEMO_TASKS = [
-	// Inbox tasks
-	{project: 0, title: 'Call mom', labels: ['Personal'], due_date: 3},
-	{project: 0, title: 'Start a new book', labels: ['Work'], due_date: 7},
-	{project: 0, title: 'Plan weekend hike', labels: [], due_date: 8},
-	{project: 0, title: 'Update resume', labels: ['Health'], due_date: 9},
-	// Trip to Mars tasks
-	{project: 1, title: 'Learn Martian language', labels: [], due_date: 7},
-	{project: 1, title: 'Prepare for low gravity', labels: [], due_date: 90},
-	{project: 1, title: 'Research Martian weather', labels: [], due_date: 120},
-	{project: 1, title: 'Book rocket to Mars', labels: [], due_date: 120},
-	{project: 1, title: 'Pack space snacks', labels: [], due_date: 365},
+	// Inbox tasks (project: 'inbox' refers to auto-created Inbox)
+	{project: 'inbox', title: 'Call mom', labels: ['Personal'], due_date: 3},
+	{project: 'inbox', title: 'Start a new book', labels: ['Work'], due_date: 7},
+	{project: 'inbox', title: 'Plan weekend hike', labels: [], due_date: 8},
+	{project: 'inbox', title: 'Update resume', labels: ['Health'], due_date: 9},
+	// Trip to Mars tasks (project: 'mars' refers to our created project)
+	{project: 'mars', title: 'Learn Martian language', labels: [], due_date: 7},
+	{project: 'mars', title: 'Prepare for low gravity', labels: [], due_date: 90},
+	{project: 'mars', title: 'Research Martian weather', labels: [], due_date: 120},
+	{project: 'mars', title: 'Book rocket to Mars', labels: [], due_date: 120},
+	{project: 'mars', title: 'Pack space snacks', labels: [], due_date: 365},
 ]
 
 function generateUsername(): string {
@@ -63,6 +78,13 @@ function addDays(days: number): string {
 }
 
 async function createDemoAccount() {
+	// Check rate limit
+	if (!checkCooldown()) {
+		const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - parseInt(localStorage.getItem(COOLDOWN_KEY) || '0', 10))) / 60000)
+		error.value = `Please wait ${remaining} minute(s) before creating another demo account.`
+		return
+	}
+
 	const HTTP = HTTPFactory()
 
 	try {
@@ -92,26 +114,37 @@ async function createDemoAccount() {
 			labelMap[label.title] = response.data.id
 		}
 
-		// Step 4: Create projects
-		status.value = 'Creating projects...'
-		const projectIds: number[] = []
+		// Step 4: Get existing projects (Inbox is auto-created on registration)
+		status.value = 'Setting up projects...'
+		const existingProjects = await AuthHTTP.get('projects')
+		const inboxProject = existingProjects.data.find((p: {title: string}) => p.title === 'Inbox')
+		const projectMap: Record<string, number> = {
+			inbox: inboxProject?.id,
+		}
+
+		// Create additional projects
 		for (const project of DEMO_PROJECTS) {
 			const response = await AuthHTTP.put('projects', project)
-			projectIds.push(response.data.id)
+			if (project.title === 'Trip to Mars') {
+				projectMap.mars = response.data.id
+			}
 		}
 
 		// Step 5: Create tasks
 		status.value = 'Creating sample tasks...'
 		for (const task of DEMO_TASKS) {
+			const projectId = projectMap[task.project]
+			if (!projectId) continue
 			const taskData: Record<string, unknown> = {
 				title: task.title,
 				due_date: addDays(task.due_date),
 			}
-			await AuthHTTP.put(`projects/${projectIds[task.project]}/tasks`, taskData)
+			await AuthHTTP.put(`projects/${projectId}/tasks`, taskData)
 		}
 
 		// Step 6: Authenticate and redirect
 		status.value = 'Redirecting...'
+		setCooldown() // Prevent rapid demo account creation
 		await authStore.checkAuth()
 		router.push({name: 'home'})
 
