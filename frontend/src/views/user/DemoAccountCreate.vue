@@ -27,6 +27,36 @@ function setCooldown(): void {
 	localStorage.setItem(COOLDOWN_KEY, Date.now().toString())
 }
 
+// Capacity check: server-side limit on total demo accounts
+interface DemoStatus {
+	can_create: boolean
+	status: string
+	total_accounts: number
+	max_accounts: number
+	capacity_percent: number
+}
+
+async function checkCapacity(): Promise<{allowed: boolean, message?: string}> {
+	try {
+		const response = await fetch('/demo-status')
+		if (!response.ok) {
+			// If status endpoint unavailable, allow creation (fail open)
+			return {allowed: true}
+		}
+		const data: DemoStatus = await response.json()
+		if (!data.can_create) {
+			return {
+				allowed: false,
+				message: `Demo is at capacity (${data.total_accounts}/${data.max_accounts} accounts). Please try again later.`,
+			}
+		}
+		return {allowed: true}
+	} catch {
+		// Network error - fail open to allow creation
+		return {allowed: true}
+	}
+}
+
 // Demo data
 const DEMO_LABELS = [
 	{title: 'Personal', hex_color: '3b82f6'},
@@ -78,10 +108,18 @@ function addDays(days: number): string {
 }
 
 async function createDemoAccount() {
-	// Check rate limit
+	// Check rate limit (client-side)
 	if (!checkCooldown()) {
 		const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - parseInt(localStorage.getItem(COOLDOWN_KEY) || '0', 10))) / 60000)
 		error.value = `Please wait ${remaining} minute(s) before creating another demo account.`
+		return
+	}
+
+	// Check server capacity
+	status.value = 'Checking availability...'
+	const capacityCheck = await checkCapacity()
+	if (!capacityCheck.allowed) {
+		error.value = capacityCheck.message || 'Demo is at capacity. Please try again later.'
 		return
 	}
 
