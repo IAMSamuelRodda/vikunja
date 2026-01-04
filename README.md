@@ -1,3 +1,5 @@
+> **🔧 This is a fork** with experimental features. See [FORK.md](FORK.md) for fork-specific features, demos, and Docker images.
+
 <img src="https://vikunja.io/images/vikunja-logo.svg" alt="" style="display: block;width: 50%;margin: 0 auto;" width="50%"/>
 
 [![Build Status](https://github.com/go-vikunja/vikunja/actions/workflows/ci.yml/badge.svg)](https://github.com/go-vikunja/vikunja/actions/workflows/ci.yml)
