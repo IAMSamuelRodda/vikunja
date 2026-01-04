@@ -10,6 +10,12 @@ This fork serves as:
 2. **Early Access Build** - Use new features before upstream merge
 3. **Contribution Portfolio** - Showcase of my work on Vikunja
 
+## Try the Demo
+
+**[🚀 Create Demo Account](https://iamsamuelrodda.github.io/vikunja/fork/demo-creator.html)**
+
+Creates a temporary account with sample data to explore all fork features.
+
 ## Docker Image
 
 ```bash

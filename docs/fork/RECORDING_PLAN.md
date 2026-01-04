@@ -28,6 +28,16 @@ docker run -p 3456:3456 ghcr.io/iamsamuelrodda/vikunja:unstable-fork
 
 ### 2. Test Data Setup
 
+**Option A: Use Demo Creator (Recommended)**
+
+Use the [Demo Creator](https://iamsamuelrodda.github.io/vikunja/fork/demo-creator.html) to automatically create:
+- Demo account with random credentials
+- Sample labels (High Priority, In Progress, Review, Done, Bug)
+- "My Tasks" project with 8 sample tasks
+- Recurring task example for RRULE demo
+
+**Option B: Manual Setup**
+
 Create clean, presentable test data:
 - [ ] Project: "Work Tasks" with 5-6 sample tasks
 - [ ] Project: "Personal" with 3-4 tasks
