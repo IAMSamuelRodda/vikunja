@@ -160,7 +160,7 @@ onMounted(() => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-height: 100vh;
+	min-block-size: 100vh;
 	background: var(--grey-900);
 }
 
@@ -170,14 +170,14 @@ onMounted(() => {
 }
 
 .logo {
-	width: 100px;
-	margin-bottom: 1.5rem;
+	inline-size: 100px;
+	margin-block-end: 1.5rem;
 }
 
 h1 {
 	color: var(--grey-100);
 	font-size: 1.5rem;
-	margin-bottom: 0.5rem;
+	margin-block-end: 0.5rem;
 }
 
 .status {
@@ -191,10 +191,10 @@ h1 {
 }
 
 .spinner {
-	width: 32px;
-	height: 32px;
+	inline-size: 32px;
+	block-size: 32px;
 	border: 3px solid var(--grey-700);
-	border-top-color: var(--primary);
+	border-block-start-color: var(--primary);
 	border-radius: 50%;
 	animation: spin 1s linear infinite;
 	margin: 1.5rem auto 0;
