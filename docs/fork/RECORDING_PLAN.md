@@ -30,11 +30,11 @@ docker run -p 3456:3456 ghcr.io/iamsamuelrodda/vikunja:unstable-fork
 
 **Option A: Use Demo Creator (Recommended)**
 
-Use the [Demo Creator](https://iamsamuelrodda.github.io/vikunja/fork/demo-creator.html) to automatically create:
+Visit `/demo-account-create` on your fork instance to automatically create:
 - Demo account with random credentials
-- Sample labels (High Priority, In Progress, Review, Done, Bug)
-- "My Tasks" project with 8 sample tasks
-- Recurring task example for RRULE demo
+- Sample labels (Personal, Work, Health)
+- Projects (Inbox, Trip to Mars) with sample tasks
+- All in zero clicks - auto-redirects when ready
 
 **Option B: Manual Setup**
 

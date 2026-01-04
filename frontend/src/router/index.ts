@@ -88,6 +88,14 @@ const router = createRouter({
 			},
 		},
 		{
+			path: '/demo-account-create',
+			name: 'user.demo',
+			component: () => import('@/views/user/DemoAccountCreate.vue'),
+			meta: {
+				title: 'demo.title',
+			},
+		},
+		{
 			path: '/user/settings',
 			name: 'user.settings',
 			component: () => import('@/views/user/Settings.vue'),
@@ -426,6 +434,7 @@ export async function getAuthForRoute(to: RouteLocation, authStore) {
 		'user.password-reset.request',
 		'user.password-reset.reset',
 		'user.register',
+		'user.demo',
 		'link-share.auth',
 		'openid.auth',
 	].includes(to.name as string) &&

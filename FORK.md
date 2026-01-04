@@ -12,9 +12,9 @@ This fork serves as:
 
 ## Try the Demo
 
-**[🚀 Create Demo Account](https://iamsamuelrodda.github.io/vikunja/fork/demo-creator.html)**
+**[🚀 Create Demo Account](https://try.vikunja.arcforge.au/demo-account-create)**
 
-Creates a temporary account with sample data to explore all fork features.
+Zero-click demo: automatically creates an account with sample data and logs you in.
 
 ## Docker Image
 
