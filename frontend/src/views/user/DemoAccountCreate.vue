@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
-import {useI18n} from 'vue-i18n'
 
 import {HTTPFactory} from '@/helpers/fetcher'
 import {saveToken} from '@/helpers/auth'
@@ -9,7 +8,6 @@ import {useAuthStore} from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const {t} = useI18n()
 
 const status = ref('Creating demo account...')
 const error = ref('')
