@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vikunja Fork Demo</title>
+    <style>
+        :root {
+            --bg-primary: #0f1419;
+            --bg-secondary: #1a1f26;
+            --text-primary: #e6e6e6;
+            --text-secondary: #8b949e;
+            --accent: #7eb88e;
+            --accent-hover: #9dd4ab;
+            --danger: #f87171;
+            --border: #30363d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            width: 120px;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .warning {
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            font-size: 0.85rem;
+            color: var(--danger);
+        }
+
+        .status {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .status-step {
+            color: var(--accent);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border: none;
+            padding: 0.875rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .error {
+            color: var(--danger);
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+
+        .config {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .config-label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+            text-align: left;
+        }
+
+        .config-input {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .config-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .fork-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: var(--bg-primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="https://vikunja.io/images/vikunja-logo.svg" alt="Vikunja" class="logo">
+        <span class="fork-badge">Fork Demo</span>
+        <h1>Try Vikunja Fork</h1>
+        <p class="subtitle">
+            Create a demo account with sample data to explore the fork's features including RRULE CalDAV sync and improved sidebar.
+        </p>
+
+        <div class="warning">
+            ⚠️ Demo accounts are temporary! All data may be deleted periodically.
+        </div>
+
+        <div class="status" id="status">
+            <div class="status-text">Click below to create your demo account</div>
+        </div>
+
+        <button class="btn" id="createBtn" onclick="createDemoAccount()">
+            Create Demo Account
+        </button>
+
+        <div class="error" id="error" style="display: none;"></div>
+
+        <div class="config">
+            <label class="config-label">Vikunja API URL</label>
+            <input type="text" class="config-input" id="apiUrl"
+                   value="https://try.vikunja.arcforge.au/api/v1"
+                   placeholder="https://your-vikunja-instance.com/api/v1">
+        </div>
+
+        <div class="footer">
+            <p>Powered by <a href="https://github.com/iamsamuelrodda/vikunja" target="_blank">Vikunja Fork</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Demo data configuration
+        const DEMO_DATA = {
+            labels: [
+                { title: 'High Priority', hex_color: 'e74c3c' },
+                { title: 'In Progress', hex_color: 'f39c12' },
+                { title: 'Review', hex_color: '9b59b6' },
+                { title: 'Done', hex_color: '27ae60' },
+                { title: 'Bug', hex_color: 'e91e63' }
+            ],
+            project: {
+                title: 'My Tasks',
+                description: 'Demo project with sample tasks'
+            },
+            tasks: [
+                {
+                    title: 'Welcome to Vikunja! 👋',
+                    description: 'This is a sample task. Click to edit, drag to reorder, and explore the features!',
+                    priority: 2
+                },
+                {
+                    title: 'Try the CalDAV sync (Fork feature)',
+                    description: 'This fork supports RRULE format for recurring tasks. Connect to iOS Reminders or Thunderbird!',
+                    priority: 3
+                },
+                {
+                    title: 'Check out the sidebar',
+                    description: 'The sidebar has been improved with collapsible sections.',
+                    priority: 1
+                },
+                {
+                    title: 'Weekly Team Meeting',
+                    description: 'Recurring task example - syncs properly with CalDAV clients.',
+                    repeat_after: 604800,  // 7 days in seconds
+                    priority: 2
+                },
+                {
+                    title: 'Create your first project',
+                    description: 'Organize your tasks into projects. Use labels for additional categorization.',
+                    priority: 1
+                },
+                {
+                    title: 'Explore Kanban view',
+                    description: 'Switch between List, Kanban, Gantt, and Table views.',
+                    priority: 1
+                },
+                {
+                    title: 'Set up notifications',
+                    description: 'Configure email reminders and due date notifications in settings.',
+                    priority: 1
+                },
+                {
+                    title: 'Try the quick add feature',
+                    description: 'Press "q" anywhere to quickly add a task. Use natural language like "Buy groceries tomorrow #shopping"',
+                    priority: 2
+                }
+            ]
+        };
+
+        function generateRandomString(length) {
+            const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        function updateStatus(text, step = '') {
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML = `
+                <div class="spinner"></div>
+                <div class="status-text">${text}</div>
+                ${step ? `<div class="status-step">${step}</div>` : ''}
+            `;
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML = `<div class="status-text" style="color: var(--danger);">Failed to create demo account</div>`;
+        }
+
+        async function apiCall(endpoint, method, body, token = null) {
+            const apiUrl = document.getElementById('apiUrl').value.replace(/\/$/, '');
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(`${apiUrl}/${endpoint}`, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `API error: ${response.status}`);
+            }
+
+            return response.json();
+        }
+
+        async function createDemoAccount() {
+            const btn = document.getElementById('createBtn');
+            const errorEl = document.getElementById('error');
+
+            btn.disabled = true;
+            errorEl.style.display = 'none';
+
+            try {
+                // Generate random credentials
+                const username = `demo_${generateRandomString(8)}`;
+                const email = `${username}@demo.vikunja.io`;
+                const password = generateRandomString(16);
+
+                // Step 1: Register
+                updateStatus('Creating account...', 'Step 1/5');
+                await apiCall('register', 'POST', { username, email, password });
+
+                // Step 2: Login
+                updateStatus('Logging in...', 'Step 2/5');
+                const loginResponse = await apiCall('login', 'POST', { username, password });
+                const token = loginResponse.token;
+
+                // Step 3: Create labels
+                updateStatus('Creating labels...', 'Step 3/5');
+                const labelIds = [];
+                for (const label of DEMO_DATA.labels) {
+                    const created = await apiCall('labels', 'PUT', label, token);
+                    labelIds.push(created.id);
+                }
+
+                // Step 4: Create project
+                updateStatus('Creating project...', 'Step 4/5');
+                const project = await apiCall('projects', 'PUT', DEMO_DATA.project, token);
+
+                // Step 5: Create tasks
+                updateStatus('Creating tasks...', 'Step 5/5');
+                for (let i = 0; i < DEMO_DATA.tasks.length; i++) {
+                    const task = { ...DEMO_DATA.tasks[i] };
+                    // Assign some labels randomly
+                    if (i < labelIds.length) {
+                        // Will add label assignment in a follow-up call if needed
+                    }
+                    await apiCall(`projects/${project.id}/tasks`, 'PUT', task, token);
+                }
+
+                // Success! Redirect to the app
+                const apiUrl = document.getElementById('apiUrl').value.replace(/\/$/, '');
+                const baseUrl = apiUrl.replace('/api/v1', '');
+
+                updateStatus('Success! Redirecting...', '');
+
+                // Save token to localStorage (works when same-origin)
+                try {
+                    localStorage.setItem('token', token);
+                } catch (e) {
+                    console.warn('Could not save token to localStorage');
+                }
+
+                // Small delay then redirect
+                setTimeout(() => {
+                    window.location.href = baseUrl;
+                }, 1000);
+
+            } catch (error) {
+                console.error('Demo creation failed:', error);
+                showError(error.message || 'Failed to create demo account. Please check the API URL.');
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
