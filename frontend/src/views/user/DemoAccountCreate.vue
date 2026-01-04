@@ -57,6 +57,24 @@ async function checkCapacity(): Promise<{allowed: boolean, message?: string}> {
 	}
 }
 
+// IP tracking: record account creation for per-IP limits
+const DEMO_EMAIL_KEY = 'demo_account_email'
+
+async function recordAccountCreation(email: string): Promise<void> {
+	try {
+		await fetch('/demo-api/record', {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({email}),
+		})
+		// Store email for logout deletion
+		localStorage.setItem(DEMO_EMAIL_KEY, email)
+	} catch {
+		// Non-critical - account still works if tracking fails
+		console.warn('Failed to record demo account creation')
+	}
+}
+
 // Demo data
 const DEMO_LABELS = [
 	{title: 'Personal', hex_color: '3b82f6'},
@@ -133,6 +151,9 @@ async function createDemoAccount() {
 		// Step 1: Register
 		status.value = 'Creating account...'
 		await HTTP.post('register', {username, email, password})
+
+		// Record for IP tracking (auto-deletes oldest if over limit)
+		await recordAccountCreation(email)
 
 		// Step 2: Login
 		status.value = 'Logging in...'

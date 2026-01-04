@@ -443,6 +443,17 @@ export const useAuthStore = defineStore('auth', () => {
 	async function logout() {
 		removeToken()
 		const loggedInVia = getLoggedInVia()
+
+		// Schedule demo account for deletion on logout
+		const demoEmail = window.localStorage.getItem('demo_account_email')
+		if (demoEmail?.includes('@demo.vikunja.io')) {
+			fetch('/demo-api/logout', {
+				method: 'POST',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify({email: demoEmail}),
+			}).catch(() => {/* Non-critical if this fails */})
+		}
+
 		window.localStorage.clear() // Clear all settings and history we might have saved in local storage.
 		await router.push({name: 'user.login'})
 		await checkAuth()
