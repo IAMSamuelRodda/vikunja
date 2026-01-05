@@ -396,7 +396,10 @@ export const useAuthStore = defineStore('auth', () => {
 			}
 			const updateSettingsPromise = userSettingsService.update(settingsUpdate)
 			setUserSettings(settingsUpdate)
-			await setLanguage(settings.language)
+			// Only change language if provided (demo mode users may have empty language)
+			if (settings.language) {
+				await setLanguage(settings.language)
+			}
 			await updateSettingsPromise
 			if (oldName !== undefined && oldName !== settingsUpdate.name) {
 				const {avatarProvider} = await (new AvatarService()).get({})

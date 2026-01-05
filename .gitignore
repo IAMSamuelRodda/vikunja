@@ -53,3 +53,4 @@ PLAN.md
 # Local development/test files
 tests/
 frontend/src/modelSchema/
+plans/
