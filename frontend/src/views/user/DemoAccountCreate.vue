@@ -3,8 +3,9 @@ import {onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 
 import {HTTPFactory} from '@/helpers/fetcher'
-import {saveToken} from '@/helpers/auth'
+import {saveToken, removeToken} from '@/helpers/auth'
 import {useAuthStore} from '@/stores/auth'
+import logoUrl from '@/assets/llama.svg'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -126,6 +127,11 @@ function addDays(days: number): string {
 }
 
 async function createDemoAccount() {
+	// Clear any existing auth state first to prevent cached UI from showing
+	removeToken()
+	authStore.setUser(null)
+	authStore.setAuthenticated(false)
+
 	// Check rate limit (client-side)
 	if (!checkCooldown()) {
 		const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - parseInt(localStorage.getItem(COOLDOWN_KEY) || '0', 10))) / 60000)
@@ -222,7 +228,7 @@ onMounted(() => {
 	<div class="demo-create">
 		<div class="demo-card">
 			<img
-				src="@/assets/llama.svg"
+				:src="logoUrl"
 				alt="Vikunja"
 				class="logo"
 			>
@@ -249,10 +255,12 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .demo-create {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-block-size: 100vh;
 	background: var(--grey-900);
 }
 
