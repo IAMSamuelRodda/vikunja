@@ -1,20 +1,15 @@
 name: ci
 
-# Fork workflow: Full CI only runs on PRs, tags, or manual trigger
-# Direct pushes to main do NOT trigger builds (use [skip ci] or just push)
-# This allows quick doc updates without waiting for full CI
-
 env:
   DO_NOT_TRACK: 1
 
 on:
   pull_request:
-    branches:
-      - main
   push:
     tags:
       - v*
-    # NOTE: Removed 'branches: main' - direct pushes don't trigger CI
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       run_release:
@@ -39,11 +34,7 @@ jobs:
 
   release:
     name: Release
-    # Run release on: tags, manual trigger (if enabled), or PR merges to main
-    if: |
-      github.ref_type == 'tag' ||
-      (github.event_name == 'workflow_dispatch' && inputs.run_release == true) ||
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    if: ${{ github.ref_type == 'tag' || github.ref_name == 'main' || (github.event_name == 'workflow_dispatch' && inputs.run_release == true) }}
     uses: ./.github/workflows/release-fork.yml
     needs:
       - test
