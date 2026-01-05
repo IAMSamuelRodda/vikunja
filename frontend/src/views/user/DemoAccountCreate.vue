@@ -126,9 +126,31 @@ function addDays(days: number): string {
 	return date.toISOString()
 }
 
+// Clear user-specific localStorage items that could cause permission issues
+// when a new demo account accesses cached project/task IDs from a previous session
+function clearUserSpecificCache() {
+	// User-specific data (project IDs, task IDs, etc.)
+	localStorage.removeItem('projectHistory')
+	localStorage.removeItem('lastVisited')
+	localStorage.removeItem('projectViewSettings')
+	localStorage.removeItem('navigation-child-projects-open')
+
+	// Clear dynamic keys (collapsedBuckets-*, editorDraft-*)
+	const keysToRemove: string[] = []
+	for (let i = 0; i < localStorage.length; i++) {
+		const key = localStorage.key(i)
+		if (key && (key.startsWith('collapsedBuckets-') || key.startsWith('editorDraft-'))) {
+			keysToRemove.push(key)
+		}
+	}
+	keysToRemove.forEach(key => localStorage.removeItem(key))
+}
+
 async function createDemoAccount() {
-	// Note: Don't clear auth state here - it triggers router guards that redirect to login
-	// The fullscreen overlay hides any cached UI
+	// Clear any cached user-specific data from previous sessions
+	// This prevents permission errors when the new user tries to access
+	// project/task IDs that belonged to a previous demo account
+	clearUserSpecificCache()
 
 	// Check rate limit (client-side)
 	if (!checkCooldown()) {
