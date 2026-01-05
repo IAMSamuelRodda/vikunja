@@ -73,6 +73,38 @@ git merge upstream/main
 git push origin main
 ```
 
+## Deployment & CI
+
+### Quick Deploy (Default for Push to Main)
+
+**Use Quick Deploy workflow for fast iteration** (~5 min vs ~28 min full CI):
+
+```bash
+# After pushing to main, trigger quick deploy for fast verification
+gh workflow run deploy-quick.yml --repo IAMSamuelRodda/vikunja
+```
+
+- Skips tests (use for trusted changes only)
+- Single-arch Docker (amd64 only)
+- Tags: `unstable-fork` + `<sha>-fork`
+
+**Full CI** runs automatically on push to main but takes ~28 minutes. Cancel it if Quick Deploy is sufficient:
+
+```bash
+# Cancel if Quick Deploy covers the verification
+gh run cancel <run_id> --repo IAMSamuelRodda/vikunja
+```
+
+### Redeploying Demo/Prod
+
+```bash
+# Demo site (try.vikunja.arcforge.au)
+ssh prod-do-hub-vpn "cd /opt/docker/droplet && docker compose pull vikunja-demo && docker compose up -d vikunja-demo"
+
+# Prod site (tasks.rodda.xyz)
+ssh prod-do-hub-vpn "cd /opt/docker/droplet && docker compose pull vikunja && docker compose up -d vikunja"
+```
+
 ## Development Commands
 
 ### Backend (Go)
