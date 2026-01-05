@@ -3,9 +3,9 @@ import {onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 
 import {HTTPFactory} from '@/helpers/fetcher'
-import {saveToken, removeToken} from '@/helpers/auth'
+import {saveToken} from '@/helpers/auth'
 import {useAuthStore} from '@/stores/auth'
-import LlamaLogo from '@/assets/llama.svg?component'
+import Logo from '@/assets/logo.svg?component'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -127,10 +127,8 @@ function addDays(days: number): string {
 }
 
 async function createDemoAccount() {
-	// Clear any existing auth state first to prevent cached UI from showing
-	removeToken()
-	authStore.setUser(null)
-	authStore.setAuthenticated(false)
+	// Note: Don't clear auth state here - it triggers router guards that redirect to login
+	// The fullscreen overlay hides any cached UI
 
 	// Check rate limit (client-side)
 	if (!checkCooldown()) {
@@ -227,7 +225,7 @@ onMounted(() => {
 <template>
 	<div class="demo-create">
 		<div class="demo-card">
-			<LlamaLogo
+			<Logo
 				alt="Vikunja"
 				class="logo"
 			/>
