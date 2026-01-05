@@ -49,11 +49,11 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/jszwedko/go-datemath v0.1.1-0.20230526204004-640a500621d6
 	github.com/labstack/echo-jwt/v4 v4.4.0
-	github.com/labstack/echo/v4 v4.14.0
+	github.com/labstack/echo/v4 v4.15.0
 	github.com/labstack/gommon v0.4.2
 	github.com/lib/pq v1.10.9
 	github.com/magefile/mage v1.15.0
-	github.com/mattn/go-sqlite3 v1.14.32
+	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/olekukonko/tablewriter v1.1.2
 	github.com/pquerna/otp v1.5.0
@@ -70,7 +70,7 @@ require (
 	github.com/typesense/typesense-go/v2 v2.0.0
 	github.com/ulule/limiter/v3 v3.11.2
 	github.com/wneessen/go-mail v0.7.2
-	github.com/yuin/goldmark v1.7.13
+	github.com/yuin/goldmark v1.7.15
 	golang.org/x/crypto v0.46.0
 	golang.org/x/image v0.34.0
 	golang.org/x/net v0.48.0

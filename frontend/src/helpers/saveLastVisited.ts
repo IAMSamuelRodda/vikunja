@@ -1,15 +1,19 @@
-const LAST_VISITED_KEY = 'lastVisited'
+import {getUserScopedKey, migrateToUserScoped} from '@/helpers/userScopedStorage'
+
+const BASE_KEY = 'lastVisited'
 
 export const saveLastVisited = (name: string | undefined, params: object, query: object) => {
 	if (typeof name === 'undefined') {
 		return
 	}
-	
-	localStorage.setItem(LAST_VISITED_KEY, JSON.stringify({name, params, query}))
+
+	const key = getUserScopedKey(BASE_KEY)
+	localStorage.setItem(key, JSON.stringify({name, params, query}))
 }
 
 export const getLastVisited = () => {
-	const lastVisited = localStorage.getItem(LAST_VISITED_KEY)
+	const key = getUserScopedKey(BASE_KEY)
+	const lastVisited = localStorage.getItem(key)
 	if (lastVisited === null) {
 		return null
 	}
@@ -18,5 +22,14 @@ export const getLastVisited = () => {
 }
 
 export const clearLastVisited = () => {
-	return localStorage.removeItem(LAST_VISITED_KEY)
+	const key = getUserScopedKey(BASE_KEY)
+	return localStorage.removeItem(key)
+}
+
+/**
+ * Migrate last visited route from unscoped to user-scoped storage.
+ * Call this after user authentication to preserve existing data.
+ */
+export function migrateLastVisited() {
+	migrateToUserScoped(BASE_KEY)
 }

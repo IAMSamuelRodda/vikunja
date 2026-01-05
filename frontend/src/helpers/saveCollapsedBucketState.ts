@@ -1,11 +1,13 @@
 import type {IBucket} from '@/modelTypes/IBucket'
 import type {IProject} from '@/modelTypes/IProject'
+import {getUserScopedKey, migrateToUserScoped} from '@/helpers/userScopedStorage'
 
-const key = 'collapsedBuckets'
+const BASE_KEY = 'collapsedBuckets'
 
 export type CollapsedBuckets = {[id: IBucket['id']]: boolean}
 
 function getAllState() {
+	const key = getUserScopedKey(BASE_KEY)
 	const saved = localStorage.getItem(key)
 	return saved === null
 		? {}
@@ -16,6 +18,7 @@ export const saveCollapsedBucketState = (
 	projectId: IProject['id'],
 	collapsedBuckets: CollapsedBuckets,
 ) => {
+	const key = getUserScopedKey(BASE_KEY)
 	const state = getAllState()
 	state[projectId] = collapsedBuckets
 	for (const bucketId in state[projectId]) {
@@ -31,4 +34,12 @@ export function getCollapsedBucketState(projectId : IProject['id']) {
 	return typeof state[projectId] !== 'undefined'
 		? state[projectId]
 		: {}
+}
+
+/**
+ * Migrate collapsed bucket state from unscoped to user-scoped storage.
+ * Call this after user authentication to preserve existing settings.
+ */
+export function migrateCollapsedBucketState() {
+	migrateToUserScoped(BASE_KEY)
 }
