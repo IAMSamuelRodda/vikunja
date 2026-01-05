@@ -94,7 +94,7 @@
         "playSoundWhenDone": "Play a sound when marking tasks as done",
         "allowIconChanges": "Show special logos during certain times",
         "alwaysShowBucketTaskCount": "Always show task count on Kanban buckets",
-        "sidebarEnhancedMode": "Compact sidebar (grouped sections, hidden star icons)",
+        "sidebarEnhancedMode": "Compact sidebar",
         "sidebarShowTaskCounts": "Show task counts in sidebar",
         "defaultTaskRelationType": "Default task relation type",
         "weekStart": "Week starts on",
