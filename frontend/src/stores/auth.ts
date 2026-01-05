@@ -390,10 +390,9 @@ export const useAuthStore = defineStore('auth', () => {
 			const oldName = info.value?.name
 			let settingsUpdate = {...settings}
 			if (configStore.demoModeEnabled) {
-				settingsUpdate = {
-					...settingsUpdate,
-					language: null,
-				}
+				// In demo mode, don't change language setting (keep user's browser language)
+				const {language, ...settingsWithoutLang} = settingsUpdate
+				settingsUpdate = settingsWithoutLang as typeof settings
 			}
 			const updateSettingsPromise = userSettingsService.update(settingsUpdate)
 			setUserSettings(settingsUpdate)
