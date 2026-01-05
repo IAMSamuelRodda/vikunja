@@ -5,7 +5,7 @@ import {useRouter} from 'vue-router'
 import {HTTPFactory} from '@/helpers/fetcher'
 import {saveToken, removeToken} from '@/helpers/auth'
 import {useAuthStore} from '@/stores/auth'
-import logoUrl from '@/assets/llama.svg'
+import LlamaLogo from '@/assets/llama.svg?component'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -13,9 +13,9 @@ const authStore = useAuthStore()
 const status = ref('Creating demo account...')
 const error = ref('')
 
-// Rate limiting: 1 demo account per 5 minutes per browser
+// Rate limiting: 1 demo account per 30 seconds per browser
 const COOLDOWN_KEY = 'demo_account_cooldown'
-const COOLDOWN_MS = 5 * 60 * 1000 // 5 minutes
+const COOLDOWN_MS = 30 * 1000 // 30 seconds
 
 function checkCooldown(): boolean {
 	const lastCreated = localStorage.getItem(COOLDOWN_KEY)
@@ -134,8 +134,8 @@ async function createDemoAccount() {
 
 	// Check rate limit (client-side)
 	if (!checkCooldown()) {
-		const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - parseInt(localStorage.getItem(COOLDOWN_KEY) || '0', 10))) / 60000)
-		error.value = `Please wait ${remaining} minute(s) before creating another demo account.`
+		const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - parseInt(localStorage.getItem(COOLDOWN_KEY) || '0', 10))) / 1000)
+		error.value = `Please wait ${remaining} second(s) before creating another demo account.`
 		return
 	}
 
@@ -227,11 +227,10 @@ onMounted(() => {
 <template>
 	<div class="demo-create">
 		<div class="demo-card">
-			<img
-				:src="logoUrl"
+			<LlamaLogo
 				alt="Vikunja"
 				class="logo"
-			>
+			/>
 			<h1>{{ error ? 'Error' : 'Setting up your demo...' }}</h1>
 			<p
 				v-if="!error"
