@@ -1,9 +1,14 @@
+import {getUserScopedKey, migrateToUserScoped} from '@/helpers/userScopedStorage'
+
 export interface ProjectHistory {
 	id: number;
 }
 
+const BASE_KEY = 'projectHistory'
+
 export function getHistory(): ProjectHistory[] {
-	const savedHistory = localStorage.getItem('projectHistory')
+	const key = getUserScopedKey(BASE_KEY)
+	const savedHistory = localStorage.getItem(key)
 	if (savedHistory === null) {
 		return []
 	}
@@ -12,12 +17,13 @@ export function getHistory(): ProjectHistory[] {
 }
 
 function saveHistory(history: ProjectHistory[]) {
+	const key = getUserScopedKey(BASE_KEY)
 	if (history.length === 0) {
-		localStorage.removeItem('projectHistory')
+		localStorage.removeItem(key)
 		return
 	}
 
-	localStorage.setItem('projectHistory', JSON.stringify(history))
+	localStorage.setItem(key, JSON.stringify(history))
 }
 
 const MAX_SAVED_PROJECTS = 6
@@ -50,4 +56,12 @@ export function removeProjectFromHistory(project: ProjectHistory) {
 		}
 	})
 	saveHistory(history)
+}
+
+/**
+ * Migrate project history from unscoped to user-scoped storage.
+ * Call this after user authentication to preserve existing history.
+ */
+export function migrateProjectHistory() {
+	migrateToUserScoped(BASE_KEY)
 }

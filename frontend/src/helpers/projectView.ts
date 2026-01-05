@@ -1,8 +1,9 @@
 import type {IProject} from '@/modelTypes/IProject'
+import {getUserScopedKey, migrateToUserScoped} from '@/helpers/userScopedStorage'
 
 export type ProjectViewSettings = Record<IProject['id'], number>
 
-const SETTINGS_KEY_PROJECT_VIEW = 'projectView'
+const BASE_KEY = 'projectView'
 
 /**
  * Save the current project view to local storage
@@ -12,8 +13,10 @@ export function saveProjectView(projectId: IProject['id'], viewId: number) {
 		return
 	}
 
+	const key = getUserScopedKey(BASE_KEY)
+
 	// We use local storage and not the store here to make it persistent across reloads.
-	const savedProjectView = localStorage.getItem(SETTINGS_KEY_PROJECT_VIEW)
+	const savedProjectView = localStorage.getItem(key)
 	let savedProjectViewSettings: ProjectViewSettings | false = false
 	if (savedProjectView !== null) {
 		savedProjectViewSettings = JSON.parse(savedProjectView) as ProjectViewSettings
@@ -25,11 +28,12 @@ export function saveProjectView(projectId: IProject['id'], viewId: number) {
 	}
 
 	projectViewSettings[projectId] = viewId
-	localStorage.setItem(SETTINGS_KEY_PROJECT_VIEW, JSON.stringify(projectViewSettings))
+	localStorage.setItem(key, JSON.stringify(projectViewSettings))
 }
 
 export function getProjectViewId(projectId: IProject['id']): number {
-	const projectViewSettingsString = localStorage.getItem(SETTINGS_KEY_PROJECT_VIEW)
+	const key = getUserScopedKey(BASE_KEY)
+	const projectViewSettingsString = localStorage.getItem(key)
 	if (!projectViewSettingsString) {
 		return 0
 	}
@@ -39,4 +43,12 @@ export function getProjectViewId(projectId: IProject['id']): number {
 		return 0
 	}
 	return projectViewSettings[projectId]
+}
+
+/**
+ * Migrate project view settings from unscoped to user-scoped storage.
+ * Call this after user authentication to preserve existing settings.
+ */
+export function migrateProjectViewSettings() {
+	migrateToUserScoped(BASE_KEY)
 }

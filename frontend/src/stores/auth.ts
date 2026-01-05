@@ -26,6 +26,11 @@ import {DATE_DISPLAY} from '@/constants/dateDisplay'
 import {TIME_FORMAT} from '@/constants/timeFormat'
 import {RELATION_KIND} from '@/types/IRelationKind'
 import type {IProvider} from '@/types/IProvider'
+import {setCurrentUserId} from '@/helpers/userScopedStorage'
+import {migrateProjectHistory} from '@/modules/projectHistory'
+import {migrateProjectViewSettings} from '@/helpers/projectView'
+import {migrateLastVisited} from '@/helpers/saveLastVisited'
+import {migrateCollapsedBucketState} from '@/helpers/saveCollapsedBucketState'
 
 function redirectToSpecifiedProvider() {
 
@@ -108,6 +113,11 @@ export const useAuthStore = defineStore('auth', () => {
 
 	function setUser(newUser: IUser | null, saveSettings = true) {
 		info.value = newUser
+
+		// Set current user ID for user-scoped localStorage
+		// This must happen before any localStorage operations that use getUserScopedKey
+		setCurrentUserId(newUser?.id ?? null)
+
 		if (newUser !== null && !isLinkShareAuth.value) {
 			reloadAvatar()
 
@@ -335,6 +345,13 @@ export const useAuthStore = defineStore('auth', () => {
 
 			setUser(newUser)
 			updateLastUserRefresh()
+
+			// Migrate localStorage data from unscoped to user-scoped keys
+			// This preserves existing user data after upgrading to user-scoped storage
+			migrateProjectHistory()
+			migrateProjectViewSettings()
+			migrateLastVisited()
+			migrateCollapsedBucketState()
 
 			return newUser
 		} catch (e) {
