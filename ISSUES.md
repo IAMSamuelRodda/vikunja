@@ -49,3 +49,20 @@ git push origin main
 
 - Original quick fix: `2f4af6e86` (clearUserSpecificCache in DemoAccountCreate.vue)
 - Upstream issue: Vikunja doesn't scope localStorage by user
+
+---
+
+## Tech Debt: Demo Instance Auto-Redirect
+
+**Status**: Deferred (recording complete)
+
+**Issue**: Users visiting `try.vikunja.arcforge.au` directly hit the main app instead of being redirected to `/demo-account-create`. This can cause stale session/localStorage issues.
+
+**Desired behavior**: Demo instance should auto-redirect unauthenticated users to `/demo-account-create`.
+
+**Options** (not implemented):
+1. Router guard redirect when `demoModeEnabled` 
+2. Nginx/Caddy redirect at infrastructure level
+3. Make `/demo-account-create` the homepage in demo mode
+
+**Priority**: Low - demo recording complete, not blocking.
