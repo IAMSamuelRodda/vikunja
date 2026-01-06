@@ -71,8 +71,9 @@ Fixes a bug where the `IsFavorite` property wasn't preserved when reading saved 
 
 Enhanced sidebar with collapsible sections and improved navigation UX.
 
-<!-- TODO: Add demo video -->
-<!-- ![Sidebar Demo](docs/fork/sidebar-compact-demo.mp4) -->
+https://github.com/iamsamuelrodda/vikunja/raw/main/docs/fork/sidebar-compact-demo.mp4
+
+> *Click link above to view demo video*
 
 **Features**:
 - Collapsible project groups
