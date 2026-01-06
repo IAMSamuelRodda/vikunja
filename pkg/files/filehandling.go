@@ -227,7 +227,7 @@ func ValidateFileStorage() error {
 	}
 
 	filename := fmt.Sprintf(".vikunja-check-%d", time.Now().UnixNano())
-	path := filepath.Join(basePath, filename)
+	path := filepath.Join(config.FilesBasePath.GetString(), filename)
 
 	err := writeToStorage(path, bytes.NewReader([]byte{}), 0)
 	if err != nil {
