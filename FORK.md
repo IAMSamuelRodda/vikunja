@@ -66,6 +66,34 @@ Fixes a bug where the `IsFavorite` property wasn't preserved when reading saved 
 
 ---
 
+### 📋 List View Task Alignment (Todoist-style)
+**Status**: Fork-only feature
+
+Improves task display in list view to match Todoist's clean alignment pattern.
+
+<!-- TODO: Add demo video -->
+<!-- ![List Alignment Demo](docs/fork/list-alignment-demo.mp4) -->
+
+**Problem Solved**:
+- Checkbox was vertically centered with entire task content, causing misalignment on multi-line titles
+- Metadata (labels, due date, project) displayed inline with title, causing unpredictable wrapping
+- Layout became messy when task titles were long
+
+**Solution**: Two-row layout with clear visual hierarchy:
+- **Row 1**: Checkbox (top-aligned) + Task title (wraps naturally) + Favorite star
+- **Row 2**: Description preview (truncated to 150 chars)
+- **Row 3**: Metadata - Priority → Due date → Labels → Icons on left; Assignees → Project name on right
+
+**Key Changes**:
+| Component | Change |
+|-----------|--------|
+| `SingleTaskInProject.vue` | Restructured to column flex layout with dedicated rows |
+| CSS | `align-items: flex-start` for checkbox alignment |
+| Description | Added preview row with HTML stripping and truncation |
+| Metadata | Consolidated into single row with left/right alignment |
+
+---
+
 ### 🗂️ Compact Sidebar Mode (In Development)
 **Status**: Branch `feat/compact-sidebar` - Not yet PR'd
 

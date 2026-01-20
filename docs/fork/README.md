@@ -30,5 +30,6 @@ This directory contains demo videos and screenshots for fork-specific features.
 
 Add demos here as they're recorded:
 - [ ] `rrule-sync-demo.mp4` - Show task syncing to iOS/CalDAV
-- [ ] `sidebar-compact-demo.mp4` - Show collapsible sidebar in action
+- [x] `sidebar-compact-demo.mp4` - Show collapsible sidebar in action
+- [ ] `list-alignment-demo.mp4` - Show Todoist-style task alignment
 - [ ] Screenshots for before/after comparisons
