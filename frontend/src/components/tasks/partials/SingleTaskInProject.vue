@@ -11,47 +11,19 @@
 			@click="openTaskDetail"
 			@keyup.enter="openTaskDetail"
 		>
-			<FancyCheckbox
-				v-model="task.done"
-				:disabled="(isArchived || disabled) && !canMarkAsDone"
-				@update:modelValue="markAsDone"
-				@click.stop
-			/>
+			<!-- Main row: checkbox + title -->
+			<div class="task-main-row">
+				<FancyCheckbox
+					v-model="task.done"
+					:disabled="(isArchived || disabled) && !canMarkAsDone"
+					@update:modelValue="markAsDone"
+					@click.stop
+				/>
 
-			<ColorBubble
-				v-if="!showProjectSeparately && projectColor !== '' && currentProject?.id !== task.projectId"
-				:color="projectColor"
-				class="mie-1"
-			/>
-
-			<div
-				:class="{ 'done': task.done, 'show-project': showProject && project}"
-				class="tasktext"
-			>
-				<span class="is-inline-flex is-align-items-center">
-					<RouterLink
-						v-if="showProject && typeof project !== 'undefined'"
-						v-tooltip="$t('task.detail.belongsToProject', {project: project.title})"
-						:to="{ name: 'project.index', params: { projectId: task.projectId } }"
-						class="task-project mie-1"
-						:class="{'mie-2': task.hexColor !== ''}"
-						@click.stop
-					>
-						{{ project.title }}
-					</RouterLink>
-
-					<ColorBubble
-						v-if="task.hexColor !== ''"
-						:color="getHexColor(task.hexColor)"
-						class="mie-1"
-					/>
-	
-					<PriorityLabel
-						:priority="task.priority"
-						:done="task.done"
-						class="pis-2 mie-1"
-					/>
-
+				<div
+					:class="{ 'done': task.done }"
+					class="task-title"
+				>
 					<TaskGlanceTooltip :task="task">
 						<RouterLink
 							ref="taskLinkRef"
@@ -62,116 +34,148 @@
 							{{ task.title }}
 						</RouterLink>
 					</TaskGlanceTooltip>
-				</span>
+				</div>
 
-				<Labels
-					v-if="task.labels.length > 0"
-					class="labels mis-2 mie-1"
-					:labels="task.labels"
-				/>
-
-				<AssigneeList
-					v-if="task.assignees.length > 0"
-					:assignees="task.assignees"
-					:avatar-size="25"
-					class="mis-1"
-					:inline="true"
-				/>
-
-				<Popup
-					v-if="+new Date(task.dueDate) > 0"
+				<BaseButton
+					:class="{'is-favorite': task.isFavorite}"
+					class="favorite"
+					@click.stop="toggleFavorite"
 				>
-					<template #trigger="{toggle, isOpen}">
-						<BaseButton
-							v-tooltip="formatDateLong(task.dueDate)"
-							class="dueDate"
-							@click.prevent.stop="toggle()"
-						>	
-							<time
-								:datetime="formatISO(task.dueDate)"
-								:class="{'overdue': task.dueDate <= new Date() && !task.done}"
-								class="is-italic"
-								:aria-expanded="isOpen ? 'true' : 'false'"
-							>
-								– {{ $t('task.detail.due', {at: dueDateFormatted}) }}
-							</time>
-						</BaseButton>
-					</template>
-					<template #content="{isOpen}">
-						<DeferTask
-							v-if="isOpen"
-							v-model="task"
-							@update:modelValue="deferTaskUpdate"
-						/>
-					</template>
-				</Popup>
-
-				<span>
-					<span
-						v-if="task.attachments.length > 0"
-						class="project-task-icon"
-					>
-						<Icon icon="paperclip" />
-					</span>
-					<span
-						v-if="!isEditorContentEmpty(task.description)"
-						class="project-task-icon is-mirrored-rtl"
-					>
-						<Icon icon="align-left" />
-					</span>
-					<span
-						v-if="taskIsRepeating"
-						v-tooltip="repeatTooltip"
-						class="project-task-icon"
-					>
-						<Icon icon="history" />
-					</span>
-					<CommentCount
-						:task="task"
-						class="project-task-icon"
+					<span class="is-sr-only">{{ task.isFavorite ? $t('task.detail.actions.unfavorite') : $t('task.detail.actions.favorite') }}</span>
+					<Icon
+						v-if="task.isFavorite"
+						icon="star"
 					/>
-				</span>
-
-				<ChecklistSummary :task="task" />
+					<Icon
+						v-else
+						:icon="['far', 'star']"
+					/>
+				</BaseButton>
 			</div>
 
-			<ProgressBar
-				v-if="task.percentDone > 0"
-				:value="task.percentDone * 100"
-				is-small
-			/>
-
-			<ColorBubble
-				v-if="showProjectSeparately && projectColor !== '' && currentProject?.id !== task.projectId"
-				:color="projectColor"
-				class="mie-1"
-			/>
-
-			<RouterLink
-				v-if="showProjectSeparately"
-				v-tooltip="$t('task.detail.belongsToProject', {project: project.title})"
-				:to="{ name: 'project.index', params: { projectId: task.projectId } }"
-				class="task-project"
-				@click.stop
+			<!-- Description preview row -->
+			<div
+				v-if="descriptionPreview"
+				class="task-description-row"
 			>
-				{{ project.title }}
-			</RouterLink>
+				{{ descriptionPreview }}
+			</div>
 
-			<BaseButton
-				:class="{'is-favorite': task.isFavorite}"
-				class="favorite"
-				@click.stop="toggleFavorite"
+			<!-- Meta row: priority, due date, labels, icons on left; project name on right -->
+			<div
+				v-if="hasMetadata"
+				class="task-meta-row"
 			>
-				<span class="is-sr-only">{{ task.isFavorite ? $t('task.detail.actions.unfavorite') : $t('task.detail.actions.favorite') }}</span>
-				<Icon
-					v-if="task.isFavorite"
-					icon="star"
-				/>
-				<Icon
-					v-else
-					:icon="['far', 'star']"
-				/>
-			</BaseButton>
+				<div class="task-meta-left">
+					<PriorityLabel
+						v-if="task.priority !== 0"
+						:priority="task.priority"
+						:done="task.done"
+						class="task-priority"
+					/>
+
+					<Popup
+						v-if="+new Date(task.dueDate) > 0"
+					>
+						<template #trigger="{toggle, isOpen}">
+							<BaseButton
+								v-tooltip="formatDateLong(task.dueDate)"
+								class="dueDate"
+								@click.prevent.stop="toggle()"
+							>
+								<time
+									:datetime="formatISO(task.dueDate)"
+									:class="{'overdue': task.dueDate <= new Date() && !task.done}"
+									:aria-expanded="isOpen ? 'true' : 'false'"
+								>
+									{{ $t('task.detail.due', {at: dueDateFormatted}) }}
+								</time>
+							</BaseButton>
+						</template>
+						<template #content="{isOpen}">
+							<DeferTask
+								v-if="isOpen"
+								v-model="task"
+								@update:modelValue="deferTaskUpdate"
+							/>
+						</template>
+					</Popup>
+
+					<Labels
+						v-if="task.labels.length > 0"
+						class="labels"
+						:labels="task.labels"
+					/>
+
+					<span class="task-icons">
+						<span
+							v-if="task.attachments.length > 0"
+							class="project-task-icon"
+						>
+							<Icon icon="paperclip" />
+						</span>
+						<span
+							v-if="taskIsRepeating"
+							v-tooltip="repeatTooltip"
+							class="project-task-icon"
+						>
+							<Icon icon="history" />
+						</span>
+						<CommentCount
+							:task="task"
+							class="project-task-icon"
+						/>
+					</span>
+
+					<ChecklistSummary :task="task" />
+
+					<ProgressBar
+						v-if="task.percentDone > 0"
+						:value="task.percentDone * 100"
+						is-small
+						class="task-progress"
+					/>
+				</div>
+
+				<div class="task-meta-right">
+					<AssigneeList
+						v-if="task.assignees.length > 0"
+						:assignees="task.assignees"
+						:avatar-size="20"
+						:inline="true"
+					/>
+
+					<RouterLink
+						v-if="showProject && typeof project !== 'undefined'"
+						v-tooltip="$t('task.detail.belongsToProject', {project: project.title})"
+						:to="{ name: 'project.index', params: { projectId: task.projectId } }"
+						class="task-project"
+						@click.stop
+					>
+						<ColorBubble
+							v-if="projectColor !== ''"
+							:color="projectColor"
+							class="mie-1"
+						/>
+						{{ project.title }}
+					</RouterLink>
+
+					<RouterLink
+						v-else-if="showProjectSeparately && typeof project !== 'undefined'"
+						v-tooltip="$t('task.detail.belongsToProject', {project: project.title})"
+						:to="{ name: 'project.index', params: { projectId: task.projectId } }"
+						class="task-project"
+						@click.stop
+					>
+						<ColorBubble
+							v-if="projectColor !== '' && currentProject?.id !== task.projectId"
+							:color="projectColor"
+							class="mie-1"
+						/>
+						{{ project.title }}
+					</RouterLink>
+				</div>
+			</div>
 			<slot />
 		</div>
 		<template v-if="typeof task.relatedTasks?.subtask !== 'undefined'">
@@ -195,7 +199,7 @@
 import {ref, watch, shallowReactive, onMounted, computed} from 'vue'
 import {useI18n} from 'vue-i18n'
 
-import TaskModel, {getHexColor} from '@/models/task'
+import TaskModel from '@/models/task'
 import type {ITask} from '@/modelTypes/ITask'
 
 import PriorityLabel from '@/components/tasks/partials/PriorityLabel.vue'
@@ -264,6 +268,42 @@ const repeatTooltip = computed(() => {
 		return ''
 	}
 	return describeRRule(task.value.repeats, t)
+})
+
+const descriptionPreview = computed(() => {
+	if (isEditorContentEmpty(task.value.description)) {
+		return ''
+	}
+	// Strip HTML tags and get plain text preview
+	const plainText = task.value.description
+		.replace(/<[^>]*>/g, ' ') // Remove HTML tags
+		.replace(/&nbsp;/g, ' ') // Replace &nbsp;
+		.replace(/\s+/g, ' ') // Collapse whitespace
+		.trim()
+
+	if (!plainText) {
+		return ''
+	}
+
+	// Truncate to ~150 characters
+	const maxLength = 150
+	if (plainText.length <= maxLength) {
+		return plainText
+	}
+	return plainText.substring(0, maxLength).trim() + '...'
+})
+
+const hasMetadata = computed(() => {
+	return task.value.priority !== 0 ||
+		task.value.labels.length > 0 ||
+		+new Date(task.value.dueDate) > 0 ||
+		task.value.attachments.length > 0 ||
+		!isEditorContentEmpty(task.value.description) ||
+		taskIsRepeating.value ||
+		task.value.percentDone > 0 ||
+		task.value.assignees.length > 0 ||
+		(props.showProject && project.value) ||
+		showProjectSeparately.value
 })
 
 watch(
@@ -366,6 +406,12 @@ async function toggleFavorite() {
 	emit('taskUpdated', task.value)
 }
 
+function deferTaskUpdate(updatedTask: ITask) {
+	task.value = updatedTask
+	updateDueDate()
+	emit('taskUpdated', updatedTask)
+}
+
 const taskRoot = ref<HTMLElement | null>(null)
 const taskLinkRef = ref<HTMLElement | null>(null)
 
@@ -394,10 +440,9 @@ defineExpose({
 <style lang="scss" scoped>
 .task {
 	display: flex;
-	flex-wrap: wrap;
+	flex-direction: column;
 	padding: .4rem;
 	transition: background-color $transition;
-	align-items: center;
 	cursor: pointer;
 	border-radius: $radius;
 	border: 2px solid transparent;
@@ -424,62 +469,6 @@ defineExpose({
 		}
 	}
 
-	.tasktext,
-	&.tasktext {
-		text-overflow: ellipsis;
-		word-wrap: break-word;
-		word-break: break-word;
-		display: -webkit-box;
-		hyphens: auto;
-		-webkit-line-clamp: 4;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-
-		flex: 1 0 50%;
-
-		.dueDate {
-			display: inline-block;
-			margin-inline-start: 5px;
-
-			&:focus-visible {
-				box-shadow: none;
-
-				time {
-					box-shadow: 0 0 0 1px hsla(var(--primary-hsl), 0.5);
-					border-radius: 3px;
-				}
-			}
-		}
-
-		.overdue {
-			color: var(--danger);
-		}
-	}
-
-	.task-project {
-		inline-size: auto;
-		color: var(--grey-400);
-		font-size: .9rem;
-		white-space: nowrap;
-	}
-
-	.avatar {
-		border-radius: 50%;
-		vertical-align: bottom;
-		margin-inline-start: 5px;
-		block-size: 27px;
-		inline-size: 27px;
-	}
-
-	.project-task-icon {
-		margin-inline-start: 6px;
-
-		&:not(:first-of-type) {
-			margin-inline-start: 8px;
-		}
-
-	}
-
 	a {
 		color: var(--text);
 		transition: color ease $transition-duration;
@@ -489,12 +478,55 @@ defineExpose({
 		}
 	}
 
+	&.loader-container.is-loading:after {
+		inset-block-start: calc(50% - 1rem);
+		inset-inline-start: calc(50% - 1rem);
+		inline-size: 2rem;
+		block-size: 2rem;
+		border-inline-start-color: var(--grey-300);
+		border-block-end-color: var(--grey-300);
+	}
+}
+
+// Main row: checkbox + title + favorite
+.task-main-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.25rem;
+	inline-size: 100%;
+
+	:deep(.fancy-checkbox) {
+		flex-shrink: 0;
+		block-size: 18px;
+		padding-block-start: 2px; // Align with first line of text
+		padding-inline-end: .25rem;
+
+		span {
+			display: none;
+		}
+	}
+
+	.task-title {
+		flex: 1;
+		min-inline-size: 0; // Allow text to shrink and wrap
+		word-wrap: break-word;
+		word-break: break-word;
+		hyphens: auto;
+
+		&.done {
+			text-decoration: line-through;
+			color: var(--grey-500);
+		}
+	}
+
 	.favorite {
+		flex-shrink: 0;
 		opacity: 1;
 		text-align: center;
 		inline-size: 27px;
 		transition: opacity $transition, color $transition;
 		border-radius: $radius;
+		margin-inline-start: auto;
 
 		&:hover {
 			color: var(--warning);
@@ -504,67 +536,116 @@ defineExpose({
 			opacity: 1;
 			color: var(--warning);
 		}
-	}
 
-	@media(hover: hover) and (pointer: fine) {
-		& .favorite {
-			opacity: 0;
-		}
-
-		&:hover .favorite {
+		&:focus {
 			opacity: 1;
 		}
 	}
 
-	.favorite:focus {
-		opacity: 1;
+	@media(hover: hover) and (pointer: fine) {
+		.favorite {
+			opacity: 0;
+		}
 	}
+}
 
-	:deep(.fancy-checkbox) {
-		block-size: 18px;
-		padding-block-start: 0;
-		padding-inline-end: .5rem;
+.task:hover .task-main-row .favorite,
+.task:focus-within .task-main-row .favorite {
+	opacity: 1;
+}
 
-		span {
-			display: none;
+// Description preview row
+.task-description-row {
+	margin-block-start: 0.125rem;
+	margin-inline-start: calc(18px + 0.5rem); // Align with title
+	font-size: 0.85rem;
+	color: var(--grey-400);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 1;
+	-webkit-box-orient: vertical;
+}
+
+// Meta row: priority, due date, labels, icons on left; project name on right
+.task-meta-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-block-start: 0.25rem;
+	margin-inline-start: calc(18px + 0.5rem); // Align with title (checkbox width + gap)
+	font-size: 0.85rem;
+	color: var(--grey-500);
+
+	.task-meta-left {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+
+		.task-priority {
+			flex-shrink: 0;
+		}
+
+		.labels {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.25rem;
+		}
+
+		.dueDate {
+			display: inline-flex;
+			align-items: center;
+
+			&:focus-visible {
+				box-shadow: none;
+
+				time {
+					box-shadow: 0 0 0 1px hsla(var(--primary-hsl), 0.5);
+					border-radius: 3px;
+				}
+			}
+
+			time {
+				font-size: 0.85rem;
+			}
+
+			.overdue {
+				color: var(--danger);
+			}
+		}
+
+		.task-icons {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.25rem;
+		}
+
+		.project-task-icon {
+			display: inline-flex;
+			align-items: center;
+		}
+
+		.task-progress {
+			inline-size: 50px;
 		}
 	}
 
-	.tasktext.done {
-		text-decoration: line-through;
-		color: var(--grey-500);
-	}
+	.task-meta-right {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-inline-start: auto;
 
-	span.parent-tasks {
-		color: var(--grey-500);
-		inline-size: auto;
-	}
-
-	.show-project .parent-tasks {
-		padding-inline-start: .25rem;
-	}
-
-	.remove {
-		color: var(--danger);
-	}
-
-	input[type='checkbox'] {
-		vertical-align: middle;
-	}
-
-	.settings {
-		float: inline-end;
-		inline-size: 24px;
-		cursor: pointer;
-	}
-
-	&.loader-container.is-loading:after {
-		inset-block-start: calc(50% - 1rem);
-		inset-inline-start: calc(50% - 1rem);
-		inline-size: 2rem;
-		block-size: 2rem;
-		border-inline-start-color: var(--grey-300);
-		border-block-end-color: var(--grey-300);
+		.task-project {
+			display: inline-flex;
+			align-items: center;
+			color: var(--grey-400);
+			font-size: 0.85rem;
+			white-space: nowrap;
+		}
 	}
 }
 
@@ -578,7 +659,7 @@ defineExpose({
 	box-shadow: var(--shadow-lg);
 	color: var(--text);
 	inset-block-start: unset;
-	
+
 	&.is-open {
 		padding: 1rem;
 		border: 1px solid var(--grey-200);
