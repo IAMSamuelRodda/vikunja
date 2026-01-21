@@ -98,11 +98,15 @@ gh run cancel <run_id> --repo IAMSamuelRodda/vikunja
 ### Redeploying Demo/Prod
 
 ```bash
-# Demo site (try.vikunja.arcforge.au)
-ssh prod-do-hub-vpn "cd /opt/docker/droplet && docker compose pull vikunja-demo && docker compose up -d vikunja-demo"
+# Pull new image and recreate containers
+ssh prod-do-hub-vpn "docker pull ghcr.io/iamsamuelrodda/vikunja:unstable-fork && docker restart vikunja vikunja-demo"
 
-# Prod site (tasks.rodda.xyz)
+# If containers need full recreation (new env vars, etc):
+# Prod (tasks.rodda.xyz) - managed by docker compose
 ssh prod-do-hub-vpn "cd /opt/docker/droplet && docker compose pull vikunja && docker compose up -d vikunja"
+
+# Demo (try.vikunja.arcforge.au) - standalone container, not in compose
+# Use docker restart after pulling, or recreate manually if needed
 ```
 
 ## Development Commands
@@ -137,8 +141,7 @@ Navigate to `frontend/` directory:
 - **Lint Styles Fix**: `pnpm lint:styles:fix` - Stylelint with auto-fix
 - **Type Check**: `pnpm typecheck` - Vue TypeScript checking
 - **Test Unit**: `pnpm test:unit` - Vitest unit tests
-- **Test E2E**: `pnpm test:e2e` - Cypress end-to-end tests
-- **Test E2E Dev**: `pnpm test:e2e-dev` - Interactive Cypress testing
+- **Test E2E**: `pnpm test:e2e` - Playwright end-to-end tests (located in `tests/e2e/`)
 
 ### Pre-commit Checks
 Always run both lint before committing:

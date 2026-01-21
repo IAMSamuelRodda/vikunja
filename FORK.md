@@ -56,7 +56,7 @@ Migrates Vikunja's legacy recurrence system to RFC 5545 RRULE format, enabling p
 ---
 
 ### ⭐ Saved Filter Favorite Fix
-**Status**: [PR #2031](https://github.com/go-vikunja/vikunja/pull/2031) - Open
+**Status**: [PR #2031](https://github.com/go-vikunja/vikunja/pull/2031) - ✅ Merged
 
 Fixes a bug where the `IsFavorite` property wasn't preserved when reading saved filters.
 
