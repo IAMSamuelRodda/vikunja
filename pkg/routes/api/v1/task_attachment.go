@@ -27,10 +27,32 @@ import (
 	"code.vikunja.io/api/pkg/db"
 	"code.vikunja.io/api/pkg/models"
 	auth2 "code.vikunja.io/api/pkg/modules/auth"
-	"code.vikunja.io/api/pkg/web/handler"
+	"code.vikunja.io/api/pkg/web"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
+
+// attachmentUploadError represents a structured error for attachment upload failures
+type attachmentUploadError struct {
+	Code    int    `json:"code,omitempty"`
+	Message string `json:"message"`
+}
+
+// toAttachmentUploadError converts an error to a structured attachmentUploadError
+func toAttachmentUploadError(err error) attachmentUploadError {
+	// Try to get structured error info from HTTPErrorProcessor
+	if httpErr, ok := err.(web.HTTPErrorProcessor); ok {
+		errDetails := httpErr.HTTPError()
+		return attachmentUploadError{
+			Code:    errDetails.Code,
+			Message: errDetails.Message,
+		}
+	}
+	// Fall back to just the error message
+	return attachmentUploadError{
+		Message: err.Error(),
+	}
+}
 
 // UploadTaskAttachment handles everything needed for the upload of a task attachment
 // @Summary Upload a task attachment
@@ -46,17 +68,17 @@ import (
 // @Failure 404 {object} models.Message "The task does not exist."
 // @Failure 500 {object} models.Message "Internal error"
 // @Router /tasks/{id}/attachments [put]
-func UploadTaskAttachment(c echo.Context) error {
+func UploadTaskAttachment(c *echo.Context) error {
 
 	var taskAttachment models.TaskAttachment
 	if err := c.Bind(&taskAttachment); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "No task ID provided").SetInternal(err)
+		return echo.NewHTTPError(http.StatusBadRequest, "No task ID provided").Wrap(err)
 	}
 
 	// Permissions check
 	auth, err := auth2.GetAuthFromClaims(c)
 	if err != nil {
-		return handler.HandleHTTPError(err)
+		return err
 	}
 
 	s := db.NewSession()
@@ -65,7 +87,7 @@ func UploadTaskAttachment(c echo.Context) error {
 	can, err := taskAttachment.CanCreate(s, auth)
 	if err != nil {
 		_ = s.Rollback()
-		return handler.HandleHTTPError(err)
+		return err
 	}
 	if !can {
 		return echo.ErrForbidden
@@ -76,13 +98,13 @@ func UploadTaskAttachment(c echo.Context) error {
 	if err != nil {
 		_ = s.Rollback()
 		if errors.Is(err, http.ErrNotMultipart) {
-			return echo.NewHTTPError(http.StatusBadRequest, "No multipart form provided")
+			return echo.NewHTTPError(http.StatusBadRequest, "No multipart form provided").Wrap(err)
 		}
-		return handler.HandleHTTPError(err)
+		return err
 	}
 
 	type result struct {
-		Errors  []*echo.HTTPError        `json:"errors"`
+		Errors  []attachmentUploadError  `json:"errors"`
 		Success []*models.TaskAttachment `json:"success"`
 	}
 	r := &result{}
@@ -95,14 +117,14 @@ func UploadTaskAttachment(c echo.Context) error {
 
 		f, err := file.Open()
 		if err != nil {
-			r.Errors = append(r.Errors, handler.HandleHTTPError(err))
+			r.Errors = append(r.Errors, toAttachmentUploadError(err))
 			continue
 		}
 		defer f.Close()
 
 		err = ta.NewAttachment(s, f, file.Filename, uint64(file.Size), auth)
 		if err != nil {
-			r.Errors = append(r.Errors, handler.HandleHTTPError(err))
+			r.Errors = append(r.Errors, toAttachmentUploadError(err))
 			continue
 		}
 		r.Success = append(r.Success, ta)
@@ -110,7 +132,7 @@ func UploadTaskAttachment(c echo.Context) error {
 
 	if err := s.Commit(); err != nil {
 		_ = s.Rollback()
-		return handler.HandleHTTPError(err)
+		return err
 	}
 
 	return c.JSON(http.StatusOK, r)
@@ -130,17 +152,17 @@ func UploadTaskAttachment(c echo.Context) error {
 // @Failure 404 {object} models.Message "The task does not exist."
 // @Failure 500 {object} models.Message "Internal error"
 // @Router /tasks/{id}/attachments/{attachmentID} [get]
-func GetTaskAttachment(c echo.Context) error {
+func GetTaskAttachment(c *echo.Context) error {
 
 	var taskAttachment models.TaskAttachment
 	if err := c.Bind(&taskAttachment); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "No task ID provided").SetInternal(err)
+		return echo.NewHTTPError(http.StatusBadRequest, "No task ID provided").Wrap(err)
 	}
 
 	// Permissions check
 	auth, err := auth2.GetAuthFromClaims(c)
 	if err != nil {
-		return handler.HandleHTTPError(err)
+		return err
 	}
 
 	s := db.NewSession()
@@ -149,7 +171,7 @@ func GetTaskAttachment(c echo.Context) error {
 	can, _, err := taskAttachment.CanRead(s, auth)
 	if err != nil {
 		_ = s.Rollback()
-		return handler.HandleHTTPError(err)
+		return err
 	}
 	if !can {
 		return echo.ErrForbidden
@@ -159,7 +181,7 @@ func GetTaskAttachment(c echo.Context) error {
 	err = taskAttachment.ReadOne(s, auth)
 	if err != nil {
 		_ = s.Rollback()
-		return handler.HandleHTTPError(err)
+		return err
 	}
 
 	// If the preview query parameter is set, get the preview (cached or generate)
@@ -175,12 +197,12 @@ func GetTaskAttachment(c echo.Context) error {
 	err = taskAttachment.File.LoadFileByID()
 	if err != nil {
 		_ = s.Rollback()
-		return handler.HandleHTTPError(err)
+		return err
 	}
 
 	if err := s.Commit(); err != nil {
 		_ = s.Rollback()
-		return handler.HandleHTTPError(err)
+		return err
 	}
 	if config.FilesType.GetString() == "s3" {
 		// s3 files cannot use http.ServeContent as it requires a Seekable file
@@ -191,9 +213,9 @@ func GetTaskAttachment(c echo.Context) error {
 		c.Response().Header().Set("Last-Modified", taskAttachment.File.Created.UTC().Format(http.TimeFormat))
 
 		// Stream the file content directly to the response
-		_, err = io.Copy(c.Response().Writer, taskAttachment.File.File)
+		_, err = io.Copy(c.Response(), taskAttachment.File.File)
 		if err != nil {
-			return handler.HandleHTTPError(err)
+			return err
 		}
 	} else {
 		http.ServeContent(c.Response(), c.Request(), taskAttachment.File.Name, taskAttachment.File.Created, taskAttachment.File.File)

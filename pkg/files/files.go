@@ -17,6 +17,7 @@
 package files
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -33,8 +34,8 @@ import (
 	"code.vikunja.io/api/pkg/modules/keyvalue"
 
 	"code.vikunja.io/api/pkg/web"
-	"github.com/aws/aws-sdk-go/aws"        //nolint:staticcheck // afero-s3 still requires aws-sdk-go v1
-	"github.com/aws/aws-sdk-go/service/s3" //nolint:staticcheck // afero-s3 still requires aws-sdk-go v1
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/c2h5oh/datasize"
 	"github.com/spf13/afero"
 	"xorm.io/xorm"
@@ -152,22 +153,13 @@ func (f *File) Delete(s *xorm.Session) (err error) {
 	return keyvalue.DecrBy(metrics.FilesCountKey, 1)
 }
 
-// Save saves a file to storage
-func (f *File) Save(fcontent io.Reader) (err error) {
-
+// writeToStorage writes content to the given path, handling both local and S3 backends
+func writeToStorage(path string, content io.Reader, size uint64) error {
 	if s3Client == nil {
-		err = afs.WriteReader(f.getAbsoluteFilePath(), fcontent)
-		if err != nil {
-			return fmt.Errorf("failed to save file: %w", err)
-		}
-
-		return keyvalue.IncrBy(metrics.FilesCountKey, 1)
+		return afs.WriteReader(path, content)
 	}
 
-	// For S3 storage, use PutObject directly with Content-Length to enable streaming
-	// without buffering the entire file in memory. Some S3-compatible services
-	// (like MinIO) require Content-Length to be set explicitly.
-	body, contentLength, cleanup, err := prepareS3UploadBody(fcontent, f.Size)
+	body, contentLength, cleanup, err := prepareS3UploadBody(content, size)
 	if err != nil {
 		return err
 	}
@@ -175,16 +167,24 @@ func (f *File) Save(fcontent io.Reader) (err error) {
 		defer cleanup()
 	}
 
-	_, err = s3Client.PutObject(&s3.PutObjectInput{
+	_, err = s3Client.PutObject(context.Background(), &s3.PutObjectInput{
 		Bucket:        aws.String(s3Bucket),
-		Key:           aws.String(f.getAbsoluteFilePath()),
+		Key:           aws.String(path),
 		Body:          body,
 		ContentLength: aws.Int64(contentLength),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to upload file to S3: %w", err)
 	}
+	return nil
+}
 
+// Save saves a file to storage
+func (f *File) Save(fcontent io.Reader) error {
+	err := writeToStorage(f.getAbsoluteFilePath(), fcontent, f.Size)
+	if err != nil {
+		return fmt.Errorf("failed to save file: %w", err)
+	}
 	return keyvalue.IncrBy(metrics.FilesCountKey, 1)
 }
 

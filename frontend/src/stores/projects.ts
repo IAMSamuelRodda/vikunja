@@ -6,8 +6,6 @@ import {useRouter} from 'vue-router'
 import ProjectService from '@/services/project'
 import ProjectDuplicateService from '@/services/projectDuplicateService'
 import ProjectDuplicateModel from '@/models/projectDuplicateModel'
-import SavedFilterService from '@/services/savedFilter'
-import SavedFilterModel from '@/models/savedFilter'
 import {setModuleLoading} from '@/stores/helper'
 import {removeProjectFromHistory} from '@/modules/projectHistory'
 import {createNewIndexer} from '@/indexes'
@@ -17,7 +15,9 @@ import type {IProject} from '@/modelTypes/IProject'
 import ProjectModel from '@/models/project'
 import {success} from '@/message'
 import {useBaseStore} from '@/stores/base'
-import {getSavedFilterIdFromProjectId} from '@/services/savedFilter'
+import SavedFilterService from '@/services/savedFilter'
+import {getSavedFilterIdFromProjectId, isSavedFilter} from '@/services/savedFilter'
+import SavedFilterModel from '@/models/savedFilter'
 import type {IProjectView} from '@/modelTypes/IProjectView'
 import {PERMISSIONS} from '@/constants/permissions.ts'
 
@@ -147,6 +147,11 @@ export const useProjectStore = defineStore('project', () => {
 		if (project.id === -1 || project.isArchived) {
 			return
 		}
+
+		if (isSavedFilter(project)) {
+			return toggleSavedFilterFavorite(project)
+		}
+		
 		return updateProject({
 			...project,
 			isFavorite: !project.isFavorite,
@@ -154,31 +159,28 @@ export const useProjectStore = defineStore('project', () => {
 	}
 
 	async function toggleSavedFilterFavorite(project: IProject) {
-		// Only handle saved filters (negative IDs less than -1)
-		const filterId = getSavedFilterIdFromProjectId(project.id)
-		if (filterId <= 0) {
+		if (!isSavedFilter(project)) {
 			return
 		}
 
-		const filterService = new SavedFilterService()
+		const wasFavorite = project.isFavorite
+		const filterId = getSavedFilterIdFromProjectId(project.id)
+		const savedFilterService = new SavedFilterService()
 
 		// Optimistically update the UI
-		const newIsFavorite = !project.isFavorite
 		setProject({
 			...project,
-			isFavorite: newIsFavorite,
+			isFavorite: !wasFavorite,
 		})
 
 		try {
-			// Get the current filter and update it
-			const filter = await filterService.get(new SavedFilterModel({id: filterId}))
-			filter.isFavorite = newIsFavorite
-			await filterService.update(filter)
+			const savedFilter = await savedFilterService.get(new SavedFilterModel({id: filterId}))
+			savedFilter.isFavorite = !wasFavorite
+			await savedFilterService.update(savedFilter)
 		} catch (e) {
-			// Revert on error
 			setProject({
 				...project,
-				isFavorite: !newIsFavorite,
+				isFavorite: wasFavorite,
 			})
 			throw e
 		}

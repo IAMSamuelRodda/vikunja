@@ -165,7 +165,7 @@
 											class="bucket-footer"
 										>
 											<div
-												v-if="showNewTaskInput[bucket.id]"
+												v-if="showNewTaskInput === bucket.id"
 												class="field"
 											>
 												<div
@@ -357,7 +357,7 @@ const taskPositionService = ref(new TaskPositionService())
 const taskBucketService = ref(new TaskBucketService())
 
 // Saved filter composable for accessing filter data
-const savedFilter = useSavedFilter(() => projectId.value < 0 ? projectId.value : undefined).filter
+const savedFilter = useSavedFilter(() => isSavedFilter({id: projectId.value}) ? projectId.value : undefined).filter
 
 const taskContainerRefs = ref<{ [id: IBucket['id']]: HTMLElement }>({})
 const bucketLimitInputRef = ref<HTMLInputElement | null>(null)
@@ -371,7 +371,7 @@ const bucketToDelete = ref(0)
 const bucketTitleEditable = ref(false)
 
 const newTaskText = ref('')
-const showNewTaskInput = ref<{ [id: IBucket['id']]: boolean }>({})
+const showNewTaskInput = ref<IBucket['id'] | null>(null)
 
 const newBucketTitle = ref('')
 const showNewBucketInput = ref(false)
@@ -612,7 +612,9 @@ function toggleShowNewTaskInput(bucketId: IBucket['id']) {
 	if (loading.value || taskLoading.value) {
 		return
 	}
-	showNewTaskInput.value[bucketId] = !showNewTaskInput.value[bucketId]
+	showNewTaskInput.value = showNewTaskInput.value === bucketId 
+		? null
+		: bucketId
 	newTaskInputFocused.value = false
 }
 

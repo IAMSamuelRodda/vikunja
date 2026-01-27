@@ -16,13 +16,49 @@ The project consists of:
 - `desktop/` – Electron wrapper application
 - `docs/` – Documentation website
 
-## Plans
+## Plans and Worktrees
 
 When the user asks you to create a plan to fix or implement something:
 
 - ALWAYS write that plan to the plans/ directory on the root of the repo.
 - NEVER commit plans to git
-- Give the plan a descriptive name
+- Give the plan a descriptive name using kebab-case (e.g., `fix-position-healing.md`, `feat-new-feature.md`)
+
+### Preparing a Worktree for Implementation
+
+When the user tells you to prepare a worktree for a plan, use the mage command to set up an isolated workspace:
+
+```bash
+mage dev:prepare-worktree <name> <plan-path>
+```
+
+**Arguments:**
+- `<name>` - Required. Becomes both the folder name and branch name. Use conventions like `fix-<description>` for bug fixes or `feat-<description>` for new features.
+- `<plan-path>` - Required. Path to a plan file (relative to repo root) that will be copied to the new worktree's `plans/` directory. Pass `""` to skip copying a plan.
+
+This will initialize a new worktree in the parent directory and copy some files over.
+
+**Example:**
+```bash
+# Create worktree for a bug fix with a plan
+mage dev:prepare-worktree fix-position-healing plans/fix-position-healing.md
+
+# Create worktree for a new feature without a plan
+mage dev:prepare-worktree feat-dark-mode ""
+```
+
+**Result:**
+```
+parent-directory/
+├── main/                    # Original workspace
+├── fix-position-healing/    # New worktree
+│   ├── config.yml           # With updated rootpath
+│   └── plans/
+│       └── fix-position-healing.md
+└── ...
+```
+
+After creation, tell the user where they can find the new worktree.
 
 ## Fork Workflow & Worktree Rules
 
@@ -127,12 +163,13 @@ ssh prod-do-hub-vpn "cd /opt/docker/droplet && docker compose pull vikunja && do
 -Development helpers under the `dev` namespace:
 - **Migration**: `mage dev:make-migration <StructName>` - Creates new database migration. If you omit `<StructName>`, the command will prompt for it.
 - **Event**: `mage dev:make-event` - Create an event type
-- **Listener**: `mage dev:make-listener` - Create an event listener  
+- **Listener**: `mage dev:make-listener` - Create an event listener
 - **Notification**: `mage dev:make-notification` - Create a notification skeleton
+- **Prepare Worktree**: `mage dev:prepare-worktree <name> <plan-path>` - Creates a new git worktree in `../` with the given name as folder and branch. Copies a plan file if provided (pass `""` to skip). Copies `config.yml` with updated rootpath and initializes the frontend.
 
 ### Frontend (Vue.js)
 Navigate to `frontend/` directory:
-- **Dev Server**: `pnpm dev` - Starts development server
+- **Dev Server**: `pnpm dev` - Starts development server, running on port 4173 unless changed with the `--port` flag
 - **Build**: `pnpm build` - Production build
 - **Build Dev**: `pnpm build:dev` - Development build  
 - **Lint**: `pnpm lint` - ESLint check
@@ -239,7 +276,7 @@ Modern Vue 3 composition API application with TypeScript:
 
 ### Testing
 - Backend: Feature tests alongside source files, web tests in `pkg/webtests/`
-- Frontend: Unit tests with Vitest, E2E tests with Cypress
+- Frontend: Unit tests with Vitest, E2E tests with Playwright
 - Always test both positive and negative authorization scenarios
 - Use test fixtures in `pkg/db/fixtures/` for consistent test data
 

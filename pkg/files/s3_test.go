@@ -18,6 +18,7 @@ package files
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -25,7 +26,7 @@ import (
 
 	"code.vikunja.io/api/pkg/config"
 	"code.vikunja.io/api/pkg/db"
-	"github.com/aws/aws-sdk-go/service/s3" //nolint:staticcheck // afero-s3 still requires aws-sdk-go v1
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -220,9 +221,12 @@ func TestInitFileHandler_S3Configuration(t *testing.T) {
 		config.FilesS3AccessKey.Set("test-access-key")
 		config.FilesS3SecretKey.Set("test-secret-key")
 
-		// This should not return an error with valid configuration
+		// With valid configuration, InitFileHandler will succeed at config parsing
+		// but fail at storage validation (since the S3 endpoint isn't real).
+		// The error should be from validation, not from config parsing.
 		err := InitFileHandler()
-		assert.NoError(t, err)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "storage validation failed")
 	})
 
 	t.Run("missing S3 endpoint", func(t *testing.T) {
@@ -281,14 +285,20 @@ func TestInitFileHandler_S3Configuration(t *testing.T) {
 func TestInitFileHandler_LocalFilesystem(t *testing.T) {
 	// Save original config values
 	originalType := config.FilesType.GetString()
+	originalBasePath := config.FilesBasePath.GetString()
+
+	// Create a temp directory for the test
+	tempDir := t.TempDir()
 
 	// Restore config after test
 	defer func() {
 		config.FilesType.Set(originalType)
+		config.FilesBasePath.Set(originalBasePath)
 	}()
 
-	// Test with local filesystem
+	// Test with local filesystem using writable temp directory
 	config.FilesType.Set("local")
+	config.FilesBasePath.Set(tempDir)
 
 	// This should not return an error
 	err := InitFileHandler()
@@ -303,7 +313,7 @@ type fakeS3PutObjectClient struct {
 	err       error
 }
 
-func (f *fakeS3PutObjectClient) PutObject(input *s3.PutObjectInput) (*s3.PutObjectOutput, error) {
+func (f *fakeS3PutObjectClient) PutObject(_ context.Context, input *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 	f.lastInput = input
 	if f.err != nil {
 		return nil, f.err

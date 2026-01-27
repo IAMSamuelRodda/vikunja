@@ -56,7 +56,7 @@
 				>{{ taskCount }}</span>
 			</BaseButton>
 			<BaseButton
-				v-if="!hideStarIcons && (project.id > 0 || project.id < -1) && project.maxPermission !== null && project.maxPermission > PERMISSIONS.READ"
+				v-if="!hideStarIcons && canToggleFavorite"
 				class="favorite"
 				:class="{'is-favorite': project.isFavorite}"
 				@click="toggleFavorite"
@@ -111,6 +111,7 @@ import ColorBubble from '@/components/misc/ColorBubble.vue'
 import ProjectsNavigation from '@/components/home/ProjectsNavigation.vue'
 import {PERMISSIONS} from '@/constants/permissions'
 import {useProjectTaskCounts} from '@/composables/useProjectTaskCounts'
+import {isSavedFilter} from '@/services/savedFilter'
 
 const props = defineProps<{
 	project: IProject,
@@ -193,14 +194,20 @@ const childProjects = computed(() => {
 		.sort((a, b) => a.position - b.position)
 })
 
-function toggleFavorite() {
-	if (props.project.id < -1) {
-		// Saved filter
-		projectStore.toggleSavedFilterFavorite(props.project)
-	} else {
-		// Regular project
-		projectStore.toggleProjectFavorite(props.project)
+const canToggleFavorite = computed(() => {
+	// Allow favorite toggle for:
+	// 1. Regular projects (id > 0) with write permission
+	// 2. Saved filters (id < -1) - user owns their own filters
+	if (props.project.id === -1) return false  // Favorites pseudo-project
+	if (props.project.id > 0) {
+		return props.project.maxPermission !== null && props.project.maxPermission > PERMISSIONS.READ
 	}
+	// Saved filters (negative IDs except -1)
+	return isSavedFilter(props.project)
+})
+
+function toggleFavorite() {
+	projectStore.toggleProjectFavorite(props.project)
 }
 
 // Task count badge
@@ -214,11 +221,6 @@ const taskCount = computed(() => {
 <style lang="scss" scoped>
 .list-menu {
 	transition: background-color $transition;
-}
-
-.list-setting-spacer {
-	inline-size: 5rem;
-	flex-shrink: 0;
 }
 
 .project-is-collapsed {

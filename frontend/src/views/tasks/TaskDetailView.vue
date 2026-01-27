@@ -424,9 +424,8 @@
 					<template v-if="canWrite">
 						<XButton
 							v-shortcut="'t'"
-							:class="{'is-success': !task.done}"
-							:shadow="task.done"
-							class="is-outlined has-no-border"
+							:class="{'is-pending': !task.done}"
+							class="button--mark-done"
 							icon="check-double"
 							variant="secondary"
 							@click="toggleTaskDone()"
@@ -1098,7 +1097,10 @@ async function toggleTaskDone() {
 	)
 }
 
-async function changeProject(project: IProject) {
+async function changeProject(project: IProject | null) {
+	if (project === null) {
+		return
+	}
 	kanbanStore.removeTaskInBucket(task.value)
 	await saveTask({
 		...task.value,
@@ -1339,6 +1341,21 @@ h3 .button {
 
 		&.has-light-text {
 			color: var(--white);
+		}
+
+		&.button--mark-done {
+			background-color: transparent;
+			box-shadow: none;
+
+			&.is-pending {
+				color: var(--success);
+
+				&:hover,
+				&:focus {
+					background-color: var(--success);
+					color: #ffffff;
+				}
+			}
 		}
 	}
 }

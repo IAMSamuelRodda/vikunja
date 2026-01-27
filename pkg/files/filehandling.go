@@ -17,22 +17,25 @@
 package files
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"code.vikunja.io/api/pkg/config"
 	"code.vikunja.io/api/pkg/db"
 	"code.vikunja.io/api/pkg/log"
 	"code.vikunja.io/api/pkg/modules/keyvalue"
 
-	"github.com/aws/aws-sdk-go/aws"             //nolint:staticcheck // afero-s3 still requires aws-sdk-go v1
-	"github.com/aws/aws-sdk-go/aws/credentials" //nolint:staticcheck // afero-s3 still requires aws-sdk-go v1
-	"github.com/aws/aws-sdk-go/aws/session"     //nolint:staticcheck // afero-s3 still requires aws-sdk-go v1
-	"github.com/aws/aws-sdk-go/service/s3"      //nolint:staticcheck // afero-s3 still requires aws-sdk-go v1
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	aferos3 "github.com/fclairamb/afero-s3"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
@@ -44,7 +47,7 @@ var afs *afero.Afero
 
 // S3 client and bucket for direct uploads with Content-Length
 type s3PutObjectClient interface {
-	PutObject(input *s3.PutObjectInput) (*s3.PutObjectOutput, error)
+	PutObject(ctx context.Context, input *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 }
 
 var s3Client s3PutObjectClient
@@ -81,23 +84,27 @@ func initS3FileHandler() error {
 		return errors.New("S3 secret key is not configured. Please set files.s3.secretkey")
 	}
 
-	// Create AWS session for afero-s3
-	sess, err := session.NewSession(&aws.Config{
-		Region:           aws.String(region),
-		Credentials:      credentials.NewStaticCredentials(accessKey, secretKey, ""),
-		Endpoint:         aws.String(endpoint),
-		S3ForcePathStyle: aws.Bool(config.FilesS3UsePathStyle.GetBool()),
-	})
+	// Create AWS SDK v2 config
+	cfg, err := awsconfig.LoadDefaultConfig(context.Background(),
+		awsconfig.WithRegion(region),
+		awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
+	)
 	if err != nil {
-		return fmt.Errorf("failed to create AWS session: %w", err)
+		return fmt.Errorf("failed to load AWS config: %w", err)
 	}
 
+	// Create S3 client with custom endpoint and path style options
+	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(endpoint)
+		o.UsePathStyle = config.FilesS3UsePathStyle.GetBool()
+	})
+
 	// Initialize S3 filesystem using afero-s3
-	fs = aferos3.NewFs(bucket, sess)
+	fs = aferos3.NewFsFromClient(bucket, client)
 	afs = &afero.Afero{Fs: fs}
 
 	// Store S3 client and bucket for direct uploads with Content-Length
-	s3Client = s3.New(sess)
+	s3Client = client
 	s3Bucket = bucket
 
 	return nil
@@ -107,6 +114,7 @@ func initS3FileHandler() error {
 func initLocalFileHandler() {
 	fs = afero.NewOsFs()
 	afs = &afero.Afero{Fs: fs}
+	s3Client = nil
 	setDefaultLocalConfig()
 }
 
@@ -116,13 +124,20 @@ func InitFileHandler() error {
 
 	switch fileType {
 	case "s3":
-		return initS3FileHandler()
+		if err := initS3FileHandler(); err != nil {
+			return err
+		}
 	case "local":
 		initLocalFileHandler()
-		return nil
 	default:
 		return fmt.Errorf("invalid file storage type '%s': must be 'local' or 's3'", fileType)
 	}
+
+	if err := ValidateFileStorage(); err != nil {
+		return fmt.Errorf("storage validation failed: %w", err)
+	}
+
+	return nil
 }
 
 // InitTestFileHandler initializes a new memory file system for testing
@@ -174,4 +189,23 @@ func InitTests() {
 // FileStat stats a file. This is an exported function to be able to test this from outide of the package
 func FileStat(file *File) (os.FileInfo, error) {
 	return afs.Stat(file.getAbsoluteFilePath())
+}
+
+// ValidateFileStorage checks that the configured file storage is writable
+// by creating and removing a temporary file.
+func ValidateFileStorage() error {
+	filename := fmt.Sprintf(".vikunja-check-%d", time.Now().UnixNano())
+	path := filepath.Join(config.FilesBasePath.GetString(), filename)
+
+	err := writeToStorage(path, bytes.NewReader([]byte{}), 0)
+	if err != nil {
+		return fmt.Errorf("failed to create test file at %s: %w", path, err)
+	}
+
+	err = afs.Remove(path)
+	if err != nil {
+		return fmt.Errorf("failed to remove test file at %s: %w", path, err)
+	}
+
+	return nil
 }
