@@ -17,11 +17,10 @@ RUN echo "{\"VERSION\": \"${RELEASE_VERSION/-g/-}\"}" > src/version.json && pnpm
 
 FROM --platform=$BUILDPLATFORM ghcr.io/techknowlogick/xgo:go-1.25.x@sha256:11ac5e6cb8767caea0c62c420e053cb69554638ec255f9bbef8ed411e70c9eec AS apibuilder
 
-RUN apk add --no-cache git make
+RUN go install github.com/magefile/mage@latest && \
+    mv /go/bin/mage /usr/local/go/bin
 
-RUN go install github.com/magefile/mage@latest
-
-WORKDIR /build
+WORKDIR /go/src/code.vikunja.io/api
 COPY . ./
 COPY --from=frontendbuilder /build/dist ./frontend/dist
 
@@ -29,7 +28,7 @@ ARG RELEASE_VERSION=dev
 ENV RELEASE_VERSION=$RELEASE_VERSION
 ENV CGO_ENABLED=0
 
-RUN mage build
+RUN export PATH=$PATH:$GOPATH/bin && mage build
 
 #  ┬─┐┬ ┐┌┐┐┌┐┐┬─┐┬─┐
 #  │┬┘│ │││││││├─ │┬┘
@@ -53,5 +52,5 @@ USER 1000
 ENV VIKUNJA_SERVICE_ROOTPATH=/app/vikunja/
 ENV VIKUNJA_DATABASE_PATH=/db/vikunja.db
 
-COPY --from=apibuilder /build/vikunja vikunja
+COPY --from=apibuilder /go/src/code.vikunja.io/api/vikunja vikunja
 COPY --from=apibuilder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
