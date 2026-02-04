@@ -212,21 +212,8 @@ func Restore(filename string, overrideConfig bool) error {
 			return fmt.Errorf("could not parse file id %s: %w", i, err)
 		}
 
-		f := &files.File{ID: id}
-
-		fc, err := file.Open()
-		if err != nil {
-			return fmt.Errorf("could not open file %s: %w", i, err)
-		}
-
-		content, err := io.ReadAll(fc)
-		_ = fc.Close()
-		if err != nil {
-			return fmt.Errorf("could not read file %s: %w", i, err)
-		}
-
-		if err := f.Save(bytes.NewReader(content)); err != nil {
-			return fmt.Errorf("could not save file: %w", err)
+		if err := restoreFile(id, file); err != nil {
+			return fmt.Errorf("could not restore file %s: %w", i, err)
 		}
 		log.Infof("Restored file %s", i)
 	}
