@@ -310,9 +310,6 @@ func (p *Provider) Set(s *xorm.Session, image *background.Image, project *models
 	if _, err = tmpFile.Seek(0, io.SeekStart); err != nil {
 		return fmt.Errorf("could not seek temp file to start: %w", err)
 	}
-	if int64(len(bodyBytes)) > maxSize {
-		return files.ErrFileIsTooLarge{Size: uint64(len(bodyBytes))}
-	}
 
 	// Save it as a file in vikunja
 	file, err := files.Create(tmpFile, "", uint64(written), auth)
