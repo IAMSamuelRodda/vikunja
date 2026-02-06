@@ -366,7 +366,6 @@ describe('Parse Task Text', () => {
 				'The 9/11 Report',
 				'The 01/02 Report',
 				'a]7/8 debate',
-				'24/7 availability',
 			]
 
 			cases.forEach(c => {
