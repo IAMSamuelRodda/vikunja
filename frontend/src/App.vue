@@ -64,7 +64,7 @@ const AUTH_ROUTE_NAMES = new Set([
 	'user.password-reset.reset',
 	'openid.auth',
 ])
-const showAuthLayout = computed(() => authStore.authUser && !AUTH_ROUTE_NAMES.has(route.name as string))
+const showAuthLayout = computed(() => authStore.authUser && typeof route.name === 'string' && !AUTH_ROUTE_NAMES.has(route.name))
 
 useBodyClass('is-touch', isTouchDevice())
 const keyboardShortcutsActive = computed(() => baseStore.keyboardShortcutsActive)
