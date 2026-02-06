@@ -22,16 +22,21 @@ const monthsRegexGroup = '(january|february|march|april|june|july|august|septemb
  * The pattern is tested in two passes: first anchored to the start, then anchored to the end.
  */
 function matchDateAtBoundary(text: string, pattern: string): RegExpExecArray | null {
-	// Pass 1: try matching at the start of the text
-	const startRegex = new RegExp(`^${pattern}($| )`, 'gi')
-	const startResult = startRegex.exec(text)
-	if (startResult !== null) {
-		return startResult
+	const regex = new RegExp(`(^| )${pattern}($| )`, 'gi')
+	let result: RegExpExecArray | null
+	while ((result = regex.exec(text)) !== null) {
+		const matchEnd = result.index + result[0].length
+		const isAtStart = result.index === 0
+		const isAtEnd = matchEnd >= text.length
+
+		if (isAtStart || isAtEnd) return result
+
+		// Allow middle-of-text matches when followed by a time expression
+		const afterMatch = text.substring(matchEnd)
+		if (/^(at |@ )/i.test(afterMatch)) return result
 	}
 
-	// Pass 2: try matching at the end of the text
-	const endRegex = new RegExp(`(^| )${pattern}$`, 'gi')
-	return endRegex.exec(text)
+	return null
 }
 
 function matchesDateExpr(text: string, dateExpr: string): boolean {
