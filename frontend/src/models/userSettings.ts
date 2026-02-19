@@ -34,6 +34,7 @@ export default class UserSettingsModel extends AbstractModel<IUserSettings> impl
 		sidebarWidth: null,
 		sidebarEnhancedMode: false,
 		sidebarShowTaskCounts: false,
+		commentSortOrder: 'asc',
 	}
 	extraSettingsLinks = {}
 

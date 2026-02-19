@@ -26,6 +26,7 @@ export interface IFrontendSettings {
 	sidebarWidth: number | null
 	sidebarEnhancedMode: boolean
 	sidebarShowTaskCounts: boolean
+	commentSortOrder: 'asc' | 'desc'
 }
 
 export interface IExtraSettingsLink {
