@@ -19,6 +19,7 @@ package v1
 import (
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -200,25 +201,25 @@ func GetTaskAttachment(c *echo.Context) error {
 		return err
 	}
 
-	if err := s.Commit(); err != nil {
-		_ = s.Rollback()
-		return err
+	mimeToReturn := taskAttachment.File.Mime
+	if mimeToReturn == "" {
+		mimeToReturn = "application/octet-stream"
 	}
+
+	c.Response().Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{
+		"filename": taskAttachment.File.Name,
+	}))
+	c.Response().Header().Set("Content-Type", mimeToReturn)
+	c.Response().Header().Set("Content-Length", strconv.FormatUint(taskAttachment.File.Size, 10))
+	c.Response().Header().Set("Last-Modified", taskAttachment.File.Created.UTC().Format(http.TimeFormat))
+
 	if config.FilesType.GetString() == "s3" {
 		// s3 files cannot use http.ServeContent as it requires a Seekable file
-		// Set response headers
-		c.Response().Header().Set("Content-Type", taskAttachment.File.Mime)
-		c.Response().Header().Set("Content-Disposition", "inline; filename=\""+taskAttachment.File.Name+"\"")
-		c.Response().Header().Set("Content-Length", strconv.FormatUint(taskAttachment.File.Size, 10))
-		c.Response().Header().Set("Last-Modified", taskAttachment.File.Created.UTC().Format(http.TimeFormat))
-
-		// Stream the file content directly to the response
+		// so we stream the file content directly to the response
 		_, err = io.Copy(c.Response(), taskAttachment.File.File)
-		if err != nil {
-			return err
-		}
-	} else {
-		http.ServeContent(c.Response(), c.Request(), taskAttachment.File.Name, taskAttachment.File.Created, taskAttachment.File.File)
+		return err
 	}
+
+	http.ServeContent(c.Response(), c.Request(), taskAttachment.File.Name, taskAttachment.File.Created, taskAttachment.File.File)
 	return nil
 }
