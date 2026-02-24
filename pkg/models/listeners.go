@@ -479,7 +479,12 @@ func (s *HandleTaskUpdateLastUpdated) Handle(msg *message.Message) (err error) {
 	sess := db.NewSession()
 	defer sess.Close()
 
-	return updateTaskLastUpdated(sess, &Task{ID: taskIDInt})
+	err = updateTaskLastUpdated(sess, &Task{ID: taskIDInt})
+	if err != nil {
+		return err
+	}
+
+	return sess.Commit()
 }
 
 // IncreaseAttachmentCounter  represents a listener
@@ -627,7 +632,7 @@ func (l *UpdateTaskInSavedFilterViews) Handle(msg *message.Message) (err error) 
 		}
 	}
 
-	return nil
+	return s.Commit()
 }
 
 ///////
