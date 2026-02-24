@@ -127,18 +127,91 @@ func Login(c *echo.Context) (err error) {
 // @Failure 400 {object} models.Message "Only user token are available for renew."
 // @Router /user/token [post]
 func RenewToken(c *echo.Context) (err error) {
+	jwtinf := c.Get("user").(*jwt.Token)
+	claims := jwtinf.Claims.(jwt.MapClaims)
+	typFloat, is := claims["type"].(float64)
+	if !is {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid JWT token.")
+	}
+	typ := int(typFloat)
+
+	if typ == auth.AuthTypeUser {
+		return echo.NewHTTPError(
+			http.StatusBadRequest,
+			"User tokens cannot be renewed via this endpoint. Use POST /user/token/refresh with a refresh token.",
+		)
+	}
+
+	if typ != auth.AuthTypeLinkShare {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid token type.")
+	}
 
 	s := db.NewSession()
 	defer s.Close()
 
-	jwtinf := c.Get("user").(*jwt.Token)
-	claims := jwtinf.Claims.(jwt.MapClaims)
-	typ := int(claims["type"].(float64))
-	if typ == auth.AuthTypeLinkShare {
-		share := &models.LinkSharing{}
-		share.ID = int64(claims["id"].(float64))
-		err := share.ReadOne(s, share)
-		if err != nil {
+	share := &models.LinkSharing{}
+	idFloat, is := claims["id"].(float64)
+	if !is {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid JWT token.")
+	}
+	share.ID = int64(idFloat)
+	err = share.ReadOne(s, share)
+	if err != nil {
+		_ = s.Rollback()
+		return err
+	}
+	t, err := auth.NewLinkShareJWTAuthtoken(share)
+	if err != nil {
+		_ = s.Rollback()
+		return err
+	}
+
+	if err := s.Commit(); err != nil {
+		_ = s.Rollback()
+		return err
+	}
+
+	return c.JSON(http.StatusOK, auth.Token{Token: t})
+}
+
+// RefreshToken exchanges a valid refresh token (sent as an HttpOnly cookie) for
+// a new short-lived JWT. The refresh token is rotated on every call.
+// @Summary Refresh user token
+// @Description Exchanges the refresh token cookie for a new short-lived JWT.
+// @tags auth
+// @Produce json
+// @Success 200 {object} auth.Token
+// @Failure 401 {object} models.Message "Invalid or expired refresh token."
+// @Router /user/token/refresh [post]
+func RefreshToken(c *echo.Context) (err error) {
+	cookie, err := c.Cookie(auth.RefreshTokenCookieName)
+	if err != nil || cookie.Value == "" {
+		return echo.NewHTTPError(http.StatusUnauthorized, "No refresh token provided.")
+	}
+	rawToken := cookie.Value
+
+	s := db.NewSession()
+	defer s.Close()
+
+	session, err := models.GetSessionByRefreshToken(s, rawToken)
+	if err != nil {
+		_ = s.Rollback()
+		if models.IsErrSessionNotFound(err) {
+			// Don't clear the cookie here — another tab may have already
+			// rotated the token, and clearing would overwrite the new cookie.
+			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired refresh token.")
+		}
+		return err
+	}
+
+	// Check if the session has expired based on its type
+	maxAge := time.Duration(config.ServiceJWTTTL.GetInt64()) * time.Second
+	if session.IsLongSession {
+		maxAge = time.Duration(config.ServiceJWTTTLLong.GetInt64()) * time.Second
+	}
+	if time.Since(session.LastActive) > maxAge {
+		if _, err := s.Where("id = ?", session.ID).Delete(&models.Session{}); err != nil {
+>>>>>>> f3ac0574c (fix(auth): use checked type assertions for all JWT claims)
 			_ = s.Rollback()
 			return err
 		}
