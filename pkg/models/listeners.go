@@ -155,7 +155,7 @@ func notifyMentionedUsers(sess *xorm.Session, task *Task, text string, n notific
 			continue
 		}
 
-		err = notifications.Notify(u, n)
+		err = notifications.Notify(u, n, sess)
 		if err != nil {
 			return users, err
 		}
@@ -219,7 +219,7 @@ func (s *SendTaskCommentNotification) Handle(msg *message.Message) (err error) {
 			Task:    event.Task,
 			Comment: event.Comment,
 		}
-		err = notifications.Notify(subscriber.User, n)
+		err = notifications.Notify(subscriber.User, n, sess)
 		if err != nil {
 			return
 		}
@@ -308,7 +308,7 @@ func (s *SendTaskAssignedNotification) Handle(msg *message.Message) (err error) 
 			Assignee: event.Assignee,
 			Target:   subscriber.User,
 		}
-		err = notifications.Notify(subscriber.User, n)
+		err = notifications.Notify(subscriber.User, n, sess)
 		if err != nil {
 			return
 		}
@@ -361,7 +361,7 @@ func (s *SendTaskDeletedNotification) Handle(msg *message.Message) (err error) {
 			Doer: event.Doer,
 			Task: event.Task,
 		}
-		err = notifications.Notify(subscriber.User, n)
+		err = notifications.Notify(subscriber.User, n, sess)
 		if err != nil {
 			return
 		}
@@ -696,7 +696,7 @@ func (s *SendProjectCreatedNotification) Handle(msg *message.Message) (err error
 			Doer:    event.Doer,
 			Project: event.Project,
 		}
-		err = notifications.Notify(subscriber.User, n)
+		err = notifications.Notify(subscriber.User, n, sess)
 		if err != nil {
 			return
 		}

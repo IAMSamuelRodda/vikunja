@@ -86,9 +86,10 @@ func ResetPassword(s *xorm.Session, reset *PasswordReset) (err error) {
 		User: user,
 	}
 
-	err = notifications.Notify(user, n)
+	err = notifications.Notify(user, n, s)
 	return
 }
+
 
 // PasswordTokenRequest defines the request format for password reset resqest
 type PasswordTokenRequest struct {
@@ -127,6 +128,6 @@ func RequestUserPasswordResetToken(s *xorm.Session, user *User) (err error) {
 		Token: token,
 	}
 
-	err = notifications.Notify(user, n)
+	err = notifications.Notify(user, n, s)
 	return
 }
