@@ -65,6 +65,7 @@ func GetTables() []interface{} {
 		&TaskPosition{},
 		&TaskBucket{},
 		&TaskUnreadStatus{},
+		&Session{},
 	}
 }
 
