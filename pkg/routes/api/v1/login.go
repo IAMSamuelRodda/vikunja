@@ -18,6 +18,7 @@ package v1
 
 import (
 	"net/http"
+	"time"
 
 	"code.vikunja.io/api/pkg/config"
 	"code.vikunja.io/api/pkg/db"
@@ -116,15 +117,15 @@ func Login(c *echo.Context) (err error) {
 	return auth.NewUserAuthTokenResponse(user, c, u.LongToken)
 }
 
-// RenewToken gives a new token to every user with a valid token
-// If the token is valid is checked in the middleware.
-// @Summary Renew user token
-// @Description Returns a new valid jwt user token with an extended length.
-// @tags user
+// RenewToken renews a link share token only. User tokens must use
+// POST /user/token/refresh with a refresh token instead.
+// @Summary Renew link share token
+// @Description Returns a new valid jwt link share token. Only works for link share tokens.
+// @tags auth
 // @Accept json
 // @Produce json
 // @Success 200 {object} auth.Token
-// @Failure 400 {object} models.Message "Only user token are available for renew."
+// @Failure 400 {object} models.Message "Only link share tokens can be renewed."
 // @Router /user/token [post]
 func RenewToken(c *echo.Context) (err error) {
 	jwtinf := c.Get("user").(*jwt.Token)
@@ -174,4 +175,139 @@ func RenewToken(c *echo.Context) (err error) {
 	return c.JSON(http.StatusOK, auth.Token{Token: t})
 }
 
-// NOTE: RefreshToken (session-based auth) will be added when cherry-picking the session auth feature block.
+// RefreshToken exchanges a valid refresh token (sent as an HttpOnly cookie) for
+// a new short-lived JWT. The refresh token is rotated on every call.
+// @Summary Refresh user token
+// @Description Exchanges the refresh token cookie for a new short-lived JWT.
+// @tags auth
+// @Produce json
+// @Success 200 {object} auth.Token
+// @Failure 401 {object} models.Message "Invalid or expired refresh token."
+// @Router /user/token/refresh [post]
+func RefreshToken(c *echo.Context) (err error) {
+	cookie, err := c.Cookie(auth.RefreshTokenCookieName)
+	if err != nil || cookie.Value == "" {
+		return echo.NewHTTPError(http.StatusUnauthorized, "No refresh token provided.")
+	}
+	rawToken := cookie.Value
+
+	s := db.NewSession()
+	defer s.Close()
+
+	session, err := models.GetSessionByRefreshToken(s, rawToken)
+	if err != nil {
+		_ = s.Rollback()
+		if models.IsErrSessionNotFound(err) {
+			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired refresh token.")
+		}
+		return err
+	}
+
+	// Check if the session has expired based on its type
+	maxAge := time.Duration(config.ServiceJWTTTL.GetInt64()) * time.Second
+	if session.IsLongSession {
+		maxAge = time.Duration(config.ServiceJWTTTLLong.GetInt64()) * time.Second
+	}
+	if time.Since(session.LastActive) > maxAge {
+		if _, err := s.Where("id = ?", session.ID).Delete(&models.Session{}); err != nil {
+			_ = s.Rollback()
+			return err
+		}
+		if err := s.Commit(); err != nil {
+			return err
+		}
+		auth.ClearRefreshTokenCookie(c)
+		return echo.NewHTTPError(http.StatusUnauthorized, "Session expired.")
+	}
+
+	if err := models.UpdateSessionLastActive(s, session.ID); err != nil {
+		_ = s.Rollback()
+		return err
+	}
+
+	newRawToken, err := models.RotateRefreshToken(s, session)
+	if err != nil {
+		_ = s.Rollback()
+		if models.IsErrSessionNotFound(err) {
+			return echo.NewHTTPError(http.StatusUnauthorized, "Refresh token already used.")
+		}
+		return err
+	}
+
+	u, err := user2.GetUserWithEmail(s, &user2.User{ID: session.UserID})
+	if err != nil {
+		_ = s.Rollback()
+		return err
+	}
+
+	if u.Status == user2.StatusDisabled {
+		if _, err := s.Where("id = ?", session.ID).Delete(&models.Session{}); err != nil {
+			_ = s.Rollback()
+			return err
+		}
+		if err := s.Commit(); err != nil {
+			return err
+		}
+		auth.ClearRefreshTokenCookie(c)
+		return &user2.ErrAccountDisabled{UserID: u.ID}
+	}
+
+	if err := s.Commit(); err != nil {
+		_ = s.Rollback()
+		return err
+	}
+
+	t, err := auth.NewUserJWTAuthtoken(u, session.ID)
+	if err != nil {
+		return err
+	}
+
+	cookieMaxAge := int(config.ServiceJWTTTL.GetInt64())
+	if session.IsLongSession {
+		cookieMaxAge = int(config.ServiceJWTTTLLong.GetInt64())
+	}
+	auth.SetRefreshTokenCookie(c, newRawToken, cookieMaxAge)
+
+	c.Response().Header().Set("Cache-Control", "no-store")
+	return c.JSON(http.StatusOK, auth.Token{Token: t})
+}
+
+// Logout deletes the current session from the server.
+// @Summary Logout
+// @Description Destroys the current session and clears the refresh token cookie.
+// @tags auth
+// @Produce json
+// @Success 200 {object} models.Message "Successfully logged out."
+// @Router /user/logout [post]
+func Logout(c *echo.Context) (err error) {
+	auth.ClearRefreshTokenCookie(c)
+
+	var sid string
+	if raw := c.Get("user"); raw != nil {
+		if jwtinf, ok := raw.(*jwt.Token); ok {
+			if claims, ok := jwtinf.Claims.(jwt.MapClaims); ok {
+				sid, _ = claims["sid"].(string)
+			}
+		}
+	}
+
+	if sid == "" {
+		return c.JSON(http.StatusOK, models.Message{Message: "Successfully logged out."})
+	}
+
+	s := db.NewSession()
+	defer s.Close()
+
+	_, err = s.Where("id = ?", sid).Delete(&models.Session{})
+	if err != nil {
+		_ = s.Rollback()
+		return err
+	}
+
+	if err := s.Commit(); err != nil {
+		_ = s.Rollback()
+		return err
+	}
+
+	return c.JSON(http.StatusOK, models.Message{Message: "Successfully logged out."})
+}
