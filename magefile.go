@@ -486,6 +486,7 @@ func (Test) E2E(args string) error {
 		"VIKUNJA_REDIS_ENABLED=false",
 		"VIKUNJA_CORS_ENABLE=true",
 		"VIKUNJA_CORS_ORIGINS=http://127.0.0.1:*,http://localhost:*",
+		"VIKUNJA_RATELIMIT_NOAUTHLIMIT=1000",
 	)
 	apiCmd.Stdout = os.Stdout
 	apiCmd.Stderr = os.Stderr
