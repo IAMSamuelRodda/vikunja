@@ -116,10 +116,6 @@ const (
 	DatabaseTLS                   Key = `database.tls`
 	DatabaseSchema                Key = `database.schema`
 
-	TypesenseEnabled Key = `typesense.enabled`
-	TypesenseURL     Key = `typesense.url`
-	TypesenseAPIKey  Key = `typesense.apikey`
-
 	MailerEnabled       Key = `mailer.enabled`
 	MailerHost          Key = `mailer.host`
 	MailerPort          Key = `mailer.port`
@@ -395,9 +391,6 @@ func InitDefaultConfig() {
 	DatabaseSslRootCert.setDefault("")
 	DatabaseTLS.setDefault("false")
 	DatabaseSchema.setDefault("public")
-
-	// Typesense
-	TypesenseEnabled.setDefault(false)
 
 	// Mailer
 	MailerEnabled.setDefault(false)
