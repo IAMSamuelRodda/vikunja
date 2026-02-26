@@ -1,0 +1,308 @@
+blueprint:
+  name: rrule-pr-feedback-rework
+  type: rework
+  date: 2026-01-27
+  description: >
+    Address all 5 maintainer review comments on PR #2032 to prepare RRULE feature
+    for upstream merge. Includes spikes for uncertainties before implementation.
+  pr_url: https://github.com/go-vikunja/vikunja/pull/2032
+  branch: feat/rrule-clean
+  tracking: document
+
+milestones:
+  - id: milestone_1
+    name: Spikes & Research
+    description: Resolve uncertainties before making code changes
+    items:
+      - id: spike_1_1
+        name: Spike - Todoist API structured recurrence data
+        type: spike
+        uncertainty: 4
+        needs_spike: true
+        description: >
+          Research whether Todoist's REST API v2 provides structured recurrence
+          data beyond the natural language 'due.string' field. Check if 'due.is_recurring'
+          combined with other API fields can give us RRULE-compatible data without
+          NLP parsing. Also research Go NLP date parsing libraries (e.g., olebedev/when,
+          tj/go-naturaldate) for feasibility of multilingual support.
+        deliverables:
+          - Summary of Todoist API structured recurrence fields
+          - Assessment of Go NLP date libraries (multilingual support, maintenance status)
+          - Recommended approach with tradeoffs
+        complexity:
+          scope: 1
+          technical: 2
+          uncertainty: 4
+          dependencies: 1
+          risk: 1
+          composite: 1.8
+
+      - id: spike_1_2
+        name: Spike - Structured repeat API model design
+        type: spike
+        uncertainty: 3
+        description: >
+          Design the structured API model that replaces raw RRULE strings in the
+          API request/response. The backend will convert to/from RRULE internally.
+          Must support: freq, interval, bymonthday, byday. Must consider CalDAV
+          roundtrip (CalDAV still uses RRULE strings). Must consider what the frontend
+          RepeatAfter.vue component actually needs.
+        deliverables:
+          - Go struct definition for RepeatConfig
+          - JSON schema showing API request/response format
+          - Mapping table from RepeatConfig fields to RRULE components
+          - CalDAV integration notes (where RRULE string conversion happens)
+        complexity:
+          scope: 2
+          technical: 3
+          uncertainty: 3
+          dependencies: 2
+          risk: 2
+          composite: 2.4
+
+  - id: milestone_2
+    name: Backend Changes
+    description: Implement all backend modifications based on spike findings
+    depends_on: [milestone_1]
+    items:
+      - id: epic_2_1
+        name: Structured repeat API model
+        type: epic
+        description: >
+          Replace raw RRULE string in API with structured RepeatConfig object.
+          Backend converts to/from RRULE for storage and CalDAV.
+        items:
+          - id: feature_2_1_1
+            name: Add RepeatConfig struct and JSON serialization
+            description: >
+              Create RepeatConfig struct with fields for freq, interval, bymonthday,
+              byday. Add custom JSON marshal/unmarshal on Task to convert between
+              RepeatConfig (API) and RRULE string (database). The 'repeats' DB column
+              stays as RRULE string.
+            complexity:
+              scope: 2
+              technical: 3
+              uncertainty: 2
+              dependencies: 2
+              risk: 2
+              composite: 2.2
+
+          - id: feature_2_1_2
+            name: Update CalDAV to use internal RRULE string
+            description: >
+              Ensure CalDAV roundtrip still works. CalDAV reads/writes RRULE strings
+              directly from the DB field, bypassing the API serialization layer.
+              Verify no breakage in pkg/caldav/ after the model change.
+            complexity:
+              scope: 1
+              technical: 2
+              uncertainty: 1
+              dependencies: 2
+              risk: 2
+              composite: 1.6
+
+      - id: epic_2_2
+        name: Remove RepeatDay column
+        type: epic
+        description: >
+          The RepeatDay field is redundant with BYMONTHDAY in the RRULE string.
+          It's already only used as a bridge during migration. Verify it's fully
+          removed after migration and not referenced elsewhere.
+        items:
+          - id: feature_2_2_1
+            name: Verify and clean up RepeatDay references
+            description: >
+              Confirm RepeatDay is only used in migration 20251228214425 (adds it)
+              and 20251229100000 (drops it). Remove the migration that adds it
+              (20251228214425) since we can fold the logic into the main migration.
+              Ensure no model code references RepeatDay.
+            complexity:
+              scope: 1
+              technical: 1
+              uncertainty: 1
+              dependencies: 1
+              risk: 2
+              composite: 1.2
+
+      - id: epic_2_3
+        name: Add RRULE validation on save
+        type: epic
+        description: >
+          Validate the RRULE (or structured RepeatConfig) when tasks are created
+          or updated. Currently invalid RRULE strings are silently accepted and
+          only fail at task completion time.
+        items:
+          - id: feature_2_3_1
+            name: Add validation in Task Create/Update
+            description: >
+              In the task create and update code paths, validate the Repeats field
+              by parsing with rrule.StrToRRule(). Return a proper API error if
+              parsing fails. This validation should happen after the structured
+              RepeatConfig is converted to RRULE string internally.
+            complexity:
+              scope: 1
+              technical: 1
+              uncertainty: 1
+              dependencies: 2
+              risk: 1
+              composite: 1.2
+
+          - id: feature_2_3_2
+            name: Add validation tests
+            description: >
+              Add tests for invalid RRULE rejection on create and update.
+              Test cases: empty string (allowed), valid RRULE (allowed),
+              malformed string (rejected), unsupported frequency (rejected).
+            complexity:
+              scope: 1
+              technical: 1
+              uncertainty: 1
+              dependencies: 1
+              risk: 1
+              composite: 1.0
+
+      - id: epic_2_4
+        name: Revert auto-set due date behavior
+        type: epic
+        description: >
+          Remove the breaking change where repeating tasks without a due date
+          get a due date auto-assigned on completion. Restore upstream behavior
+          where repeat + no due date = no-op.
+        items:
+          - id: feature_2_4_1
+            name: Revert setTaskDatesRRule due date logic
+            description: >
+              In setTaskDatesRRule(), restore the guard that skips date
+              calculation when oldTask.DueDate.IsZero(). Remove the
+              unconditional newTask.DueDate = nextOccurrence assignment.
+              Update or remove the test that validates auto-setting.
+            complexity:
+              scope: 1
+              technical: 1
+              uncertainty: 1
+              dependencies: 1
+              risk: 1
+              composite: 1.0
+
+      - id: epic_2_5
+        name: Todoist migration recurrence import
+        type: epic
+        depends_on: [spike_1_1]
+        description: >
+          Update Todoist migration based on spike findings. Either use structured
+          API data, use a library, or document English-only limitation.
+        items:
+          - id: feature_2_5_1
+            name: Implement chosen Todoist approach
+            description: >
+              Based on spike_1_1 findings, implement the recommended approach
+              for Todoist recurrence import. This may involve replacing
+              todoistDueStringToRRule with API-data-based conversion, integrating
+              a library, or keeping current approach with documented limitations.
+            needs_spike: true
+            depends_on: [spike_1_1]
+            complexity:
+              scope: 2
+              technical: 2
+              uncertainty: 3
+              dependencies: 2
+              risk: 2
+              composite: 2.2
+
+  - id: milestone_3
+    name: Frontend Changes
+    description: Update frontend to use structured API model instead of RRULE parsing
+    depends_on: [milestone_2]
+    items:
+      - id: epic_3_1
+        name: Remove frontend RRULE parsing
+        type: epic
+        description: >
+          Replace rrule.ts helper with direct use of structured RepeatConfig
+          from the API. The frontend should send/receive structured objects,
+          not RRULE strings.
+        items:
+          - id: feature_3_1_1
+            name: Update TypeScript model for structured repeat
+            description: >
+              Replace 'repeats: string' in ITask.ts with structured RepeatConfig
+              interface matching the backend struct. Update task.ts model defaults.
+            complexity:
+              scope: 1
+              technical: 1
+              uncertainty: 1
+              dependencies: 2
+              risk: 1
+              composite: 1.2
+
+          - id: feature_3_1_2
+            name: Update RepeatAfter.vue to use structured data
+            description: >
+              Remove RRULE parsing/generation from the component. Read freq,
+              interval, bymonthday directly from the structured API response.
+              Write back structured object on changes. Remove import of rrule.ts.
+            complexity:
+              scope: 2
+              technical: 2
+              uncertainty: 1
+              dependencies: 2
+              risk: 2
+              composite: 1.8
+
+          - id: feature_3_1_3
+            name: Remove rrule.ts helper
+            description: >
+              Delete frontend/src/helpers/rrule.ts entirely once no components
+              import it. This is the core of kolaente's feedback - no RRULE
+              parsing in the frontend.
+            complexity:
+              scope: 1
+              technical: 1
+              uncertainty: 1
+              dependencies: 2
+              risk: 1
+              composite: 1.2
+
+  - id: milestone_4
+    name: Testing & Cleanup
+    description: End-to-end verification and commit cleanup
+    depends_on: [milestone_2, milestone_3]
+    items:
+      - id: feature_4_1
+        name: Update web tests for structured repeat model
+        description: >
+          Update pkg/webtests/ to use structured repeat format instead of
+          raw RRULE strings in API requests/responses.
+        complexity:
+          scope: 2
+          technical: 1
+          uncertainty: 1
+          dependencies: 2
+          risk: 1
+          composite: 1.4
+
+      - id: feature_4_2
+        name: Run full test suite
+        description: >
+          Run mage test:feature, mage test:web, and frontend pnpm test:unit.
+          Fix any failures. Run mage lint and pnpm lint.
+        complexity:
+          scope: 1
+          technical: 1
+          uncertainty: 2
+          dependencies: 3
+          risk: 1
+          composite: 1.6
+
+      - id: feature_4_3
+        name: Squash and reorder commits for clean PR
+        description: >
+          Interactive rebase to create clean, logical commits for upstream.
+          Group by feature area. Ensure each commit passes tests independently.
+        complexity:
+          scope: 1
+          technical: 2
+          uncertainty: 1
+          dependencies: 3
+          risk: 2
+          composite: 1.8
