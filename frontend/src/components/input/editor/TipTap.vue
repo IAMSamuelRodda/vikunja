@@ -929,6 +929,7 @@ watch(
 // Basic editor styles
 .ProseMirror {
 	padding: .5rem .5rem .5rem 0;
+	overflow-wrap: break-word;
 
 	&:focus-within, &:focus {
 		box-shadow: none;
