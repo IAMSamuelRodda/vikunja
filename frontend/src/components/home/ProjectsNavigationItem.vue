@@ -205,7 +205,6 @@ const canToggleFavorite = computed(() => {
 	// Saved filters (negative IDs except -1)
 	return isSavedFilter(props.project)
 })
-<<<<<<< HEAD
 
 function toggleFavorite() {
 	projectStore.toggleProjectFavorite(props.project)
