@@ -19,7 +19,7 @@
 
 ```bash
 # Ensure fork is running locally with all features
-cd ~/repos/2-areas/vikunja
+cd ~/repos/vikunja
 
 # Build and run (or use Docker)
 docker pull ghcr.io/iamsamuelrodda/vikunja:unstable-fork
